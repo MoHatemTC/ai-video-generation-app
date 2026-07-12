@@ -1,0 +1,13 @@
+# Add backend dependencies here when the backend is implemented.
+# Suggested first dependencies:
+# fastapi
+# uvicorn[standard]
+# python-dotenv
+# pydantic
+# pytest
+#
+# Pipeline-specific dependencies to add as stages are built:
+# openai            # or google-generativeai for the LLM agents
+# whisperx          # forced alignment / word timestamps
+# ffmpeg-python     # rendering (requires ffmpeg installed on the system)
+# manim             # candidate composition/animation engine (see Sprint 3 spike)
