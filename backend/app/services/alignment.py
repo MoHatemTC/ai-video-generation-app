@@ -11,12 +11,14 @@ using character-proportional timing, and graceful error recovery.
 """
 import logging
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import whisperx
 import numpy as np
 
+# Use the team's canonical script model
+from models.script import VideoScriptBlueprint
+
 from app.schemas.timestamps import (
-    Script,
     AudioTrack,
     TimestampMap,
     WordTimestamp,
@@ -25,6 +27,8 @@ from app.schemas.timestamps import (
 
 logger = logging.getLogger(__name__)
 
+# Rough (pre-alignment) boundary estimate for a single segment: (start, end).
+RoughBounds = Dict[int, Tuple[float, float]]
 
 class AlignmentService:
     def __init__(self, device: str = "cpu"):
@@ -50,7 +54,7 @@ class AlignmentService:
                 raise RuntimeError(f"Alignment model initialization failed: {e}")
         return self._models[language_code]
 
-    def align(self, script: Script, audio_track: AudioTrack, video_id: str, retries: int = 2) -> TimestampMap:
+    def align(self, script: VideoScriptBlueprint, audio_track: AudioTrack, video_id: str, retries: int = 2) -> TimestampMap:
         """
         Aligns the text script with the audio track to produce word-level timestamps.
         Includes basic retry logic for upstream/file system glitches.
@@ -89,8 +93,13 @@ class AlignmentService:
                 # 2. Load the audio using whisperx's built-in loader
                 audio = whisperx.load_audio(audio_track.audio_path)
 
-                # 3. Prepare segments using proportional duration estimation
-                whisperx_segments = self._prepare_segments_for_alignment(script, audio, audio_track.duration)
+                # 3. Prepare segments using proportional duration estimation.
+                # This returns the WhisperX-ready segment list AND a local map of
+                # rough (start, end) boundaries per segment_id -- it does NOT
+                # mutate the caller's `script` object.
+                whisperx_segments, rough_bounds = self._prepare_segments_for_alignment(
+                    script, audio, audio_track.duration
+                )
 
                 # 4. Run forced alignment
                 logger.info("Running WhisperX alignment...")
@@ -112,6 +121,7 @@ class AlignmentService:
                     video_id=video_id,
                     audio_file_path=audio_track.audio_path,
                     audio_duration=audio_duration,
+                    rough_bounds=rough_bounds,
                 )
 
             except Exception as e:
@@ -123,16 +133,27 @@ class AlignmentService:
                     raise RuntimeError(f"Alignment process failed after {retries} retries. Last error: {e}")
                 time.sleep(2) # Short backoff before retry
 
-    def _prepare_segments_for_alignment(self, script: Script, audio: np.ndarray, known_duration: Optional[float] = None) -> List[Dict[str, Any]]:
+    def _prepare_segments_for_alignment(
+        self, script: VideoScriptBlueprint, audio: np.ndarray, known_duration: Optional[float] = None
+    ) -> Tuple[List[Dict[str, Any]], RoughBounds]:
         """
-        Calculates rough start/end boundaries for WhisperX using character-proportional estimation.
-        Also populates the rough boundaries in the script segments for tracking, and as a
-        fallback if a segment ends up with no successfully aligned words.
+        Calculates rough start/end boundaries for WhisperX using character-proportional
+        estimation.
+
+        Returns a tuple of:
+          - the WhisperX-ready segment list (text + padded search window), and
+          - a local `{segment_id: (start, end)}` map of the *unpadded* rough
+            boundaries, to be used later as a segment-level fallback if a segment
+            ends up with no successfully aligned words.
+
+        Does not mutate `script` or its segments -- the caller's Script object is
+        read-only input here, consistent with it being a shared upstream contract.
         """
         total_chars = sum(len(seg.text) for seg in script.segments)
         audio_duration = known_duration or (len(audio) / self.sample_rate)
 
         segments = []
+        rough_bounds: RoughBounds = {}
         current_time = 0.0
 
         for seg in script.segments:
@@ -140,13 +161,13 @@ class AlignmentService:
             duration_ratio = (len(seg.text) / total_chars) if total_chars > 0 else 0
             paragraph_duration = duration_ratio * audio_duration
 
-            # Store rough estimates in the segment schema
-            seg.start = current_time
-            seg.end = current_time + paragraph_duration
+            seg_start = current_time
+            seg_end = current_time + paragraph_duration
+            rough_bounds[seg.segment_id] = (seg_start, seg_end)
 
             # Add a padding/buffer on both sides for the search window as requested
-            start_time = max(0.0, current_time - 10.0)
-            end_time = min(audio_duration, current_time + paragraph_duration + 10.0)
+            start_time = max(0.0, seg_start - 10.0)
+            end_time = min(audio_duration, seg_end + 10.0)
 
             segments.append({
                 "text": seg.text,
@@ -155,17 +176,18 @@ class AlignmentService:
             })
 
             # Move tracker forward
-            current_time += paragraph_duration
+            current_time = seg_end
 
-        return segments
+        return segments, rough_bounds
 
     def _map_to_schema(
         self,
-        script: Script,
+        script: VideoScriptBlueprint,
         aligned_result: Dict[str, Any],
         video_id: str,
         audio_file_path: str,
         audio_duration: float,
+        rough_bounds: RoughBounds,
     ) -> TimestampMap:
         """
         Converts WhisperX dict output back to our rigid Pydantic TimestampMap schema.
@@ -173,6 +195,10 @@ class AlignmentService:
         word_id, segment_id, and word_index so downstream stages can link
         visual cues to specific spoken words, plus a segment_timestamps list
         aggregating start/end/words per script segment.
+
+        `rough_bounds` (from _prepare_segments_for_alignment) is used as the
+        segment-level start/end fallback when a segment has no successfully
+        aligned words.
         """
         whisperx_segments = aligned_result.get("segments", [])
 
@@ -219,12 +245,16 @@ class AlignmentService:
             # Aggregate segment-level start/end from the words that actually
             # aligned. If none aligned (e.g. all unaligned, or zero words),
             # fall back to the rough character-proportional estimate computed
-            # in _prepare_segments_for_alignment so the segment still has a
-            # usable boundary for scene/segment-level consumers.
+            # up front in _prepare_segments_for_alignment, so the segment still
+            # has a usable boundary for scene/segment-level consumers.
             starts = [w.start_seconds for w in segment_words if w.start_seconds is not None]
             ends = [w.end_seconds for w in segment_words if w.end_seconds is not None]
-            seg_start = min(starts) if starts else original_script_seg.start
-            seg_end = max(ends) if ends else original_script_seg.end
+
+            fallback_start, fallback_end = rough_bounds.get(
+                original_script_seg.segment_id, (None, None)
+            )
+            seg_start = min(starts) if starts else fallback_start
+            seg_end = max(ends) if ends else fallback_end
 
             segment_timestamps.append(
                 SegmentTimestamp(
