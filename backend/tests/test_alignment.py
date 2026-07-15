@@ -16,14 +16,19 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import pytest
 from unittest.mock import patch, MagicMock
-from app.schemas.timestamps import Script, ScriptSegment, AudioTrack, TimestampMap
+from app.schemas.timestamps import AudioTrack, TimestampMap
 from app.services.alignment import AlignmentService
 
-# Mock data simulating upstream pipeline outputs
-MOCK_SCRIPT = Script(
+# Updated to match the shared team contract and integer IDs
+from models.script import VideoScriptBlueprint, ScriptSegment
+
+MOCK_SCRIPT = VideoScriptBlueprint(
+    title="Test Video",
+    target_audience="Beginner",
+    estimated_total_duration=10,
     segments=[
-        ScriptSegment(segment_id="seg_01", text="Hello world."),
-        ScriptSegment(segment_id="seg_02", text="This is a test.")
+        ScriptSegment(segment_id=1, text="Hello world.", visual_cues="fade in", duration_seconds=1),
+        ScriptSegment(segment_id=2, text="This is a test.", visual_cues="show chart", duration_seconds=1)
     ]
 )
 
@@ -100,7 +105,7 @@ def test_alignment_success(mock_whisperx):
     # Assert first word has correct fields
     first_word = result.word_timestamps[0]
     assert first_word.word_id == "word_1"
-    assert first_word.segment_id == "seg_01"
+    assert first_word.segment_id == 1  # Updated assertion
     assert first_word.word_index == 0
     assert first_word.word == "Hello"
     assert first_word.start_seconds == 0.1
@@ -110,14 +115,14 @@ def test_alignment_success(mock_whisperx):
     # Assert second word in first segment
     second_word = result.word_timestamps[1]
     assert second_word.word_id == "word_2"
-    assert second_word.segment_id == "seg_01"
+    assert second_word.segment_id == 1  # Updated assertion
     assert second_word.word_index == 1
     assert second_word.word == "world."
     
     # Assert word_id continues sequentially across segment boundaries
     third_word = result.word_timestamps[2]
     assert third_word.word_id == "word_3"
-    assert third_word.segment_id == "seg_02"
+    assert third_word.segment_id == 2  # Updated assertion
     assert third_word.word_index == 0  # Resets per segment
     assert third_word.word == "This"
     
@@ -125,7 +130,7 @@ def test_alignment_success(mock_whisperx):
     missing_word = result.word_timestamps[3]
     assert missing_word.word_id == "word_4"
     assert missing_word.word == "is"
-    assert missing_word.segment_id == "seg_02"
+    assert missing_word.segment_id == 2  # Updated assertion
     assert missing_word.word_index == 1
     assert missing_word.start_seconds is None
     assert missing_word.end_seconds is None
@@ -141,13 +146,13 @@ def test_segment_timestamps_aggregation(mock_whisperx):
     assert len(result.segment_timestamps) == 2
 
     seg_1 = result.segment_timestamps[0]
-    assert seg_1.segment_id == "seg_01"
+    assert seg_1.segment_id == 1  # Updated assertion
     assert seg_1.start == 0.1  # min start of "Hello"/"world."
     assert seg_1.end == 0.9    # max end of "Hello"/"world."
     assert len(seg_1.words) == 2
 
     seg_2 = result.segment_timestamps[1]
-    assert seg_2.segment_id == "seg_02"
+    assert seg_2.segment_id == 2  # Updated assertion
     # "is" has no timing and must be excluded from the min/max, not crash it
     assert seg_2.start == 1.1  # min start across This/a/test. (is excluded)
     assert seg_2.end == 1.9    # max end across This/a/test. (is excluded)
@@ -202,7 +207,7 @@ def test_output_matches_downstream_contract(mock_whisperx):
     # Validate a specific word can be found by word_id (animation trigger use case)
     word_3 = next(w for w in output["word_timestamps"] if w["word_id"] == "word_3")
     assert word_3["word"] == "This"
-    assert word_3["segment_id"] == "seg_02"
+    assert word_3["segment_id"] == 2  # Updated assertion
 
 def test_audio_duration_from_array_when_not_provided(mock_whisperx):
     """Test that audio_duration_seconds is computed from the audio array
@@ -222,7 +227,6 @@ def test_audio_duration_from_array_when_not_provided(mock_whisperx):
     # Mock audio is [0]*32000, at 16kHz sample rate = 2.0 seconds
     assert result.audio_duration_seconds == 2.0
 
-
 # --- Malformed / edge-case input handling ---
 
 def test_empty_script_returns_empty_timestamp_map():
@@ -230,8 +234,9 @@ def test_empty_script_returns_empty_timestamp_map():
     does not attempt to load a model or touch WhisperX -- it just returns a
     schema-valid, empty TimestampMap so the pipeline can continue."""
     service = AlignmentService(device="cpu")
-
-    empty_script = Script(segments=[])
+    
+    # Updated to VideoScriptBlueprint
+    empty_script = VideoScriptBlueprint(title="", target_audience="", estimated_total_duration=0, segments=[])
 
     with patch("app.services.alignment.whisperx") as mock_whisperx:
         result = service.align(empty_script, MOCK_AUDIO_TRACK, video_id=MOCK_VIDEO_ID)
@@ -268,5 +273,5 @@ def test_segment_count_mismatch_handled_gracefully(mock_whisperx):
 
     # Only the overlapping segment (seg_01) should be present; no crash.
     assert len(result.segment_timestamps) == 1
-    assert result.segment_timestamps[0].segment_id == "seg_01"
+    assert result.segment_timestamps[0].segment_id == 1  # Updated assertion
     assert len(result.word_timestamps) == 2
