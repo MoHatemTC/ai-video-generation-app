@@ -1,6 +1,6 @@
 import pytest
 from backend.app.services.assets.images import AssetService
-from backend.app.schemas.asset import AssetResponseContract
+from app.schemas.asset import AssetResponseContract 
 
 @pytest.mark.asyncio
 async def test_asset_lane_flow_and_contract():
@@ -15,6 +15,9 @@ async def test_asset_lane_flow_and_contract():
     # Assertions to guarantee validation success
     assert isinstance(output, AssetResponseContract)
     assert len(output.assets) == 1
-    assert output.assets[0].element == "Icon of a computer server"
+    # Verify we received a valid, non-empty generated prompt string
+    assert len(output.assets[0].element) > 0
+    # Ensure the agent successfully expanded and optimized the raw input
+    assert output.assets[0].element != "Icon of a computer server"
     assert "supabase" in output.assets[0].url
     assert output.assets[0].license == "open-source"

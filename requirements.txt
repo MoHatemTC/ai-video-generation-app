@@ -11,3 +11,10 @@
 # whisperx          # forced alignment / word timestamps
 # ffmpeg-python     # rendering (requires ffmpeg installed on the system)
 # manim             # candidate composition/animation engine (see Sprint 3 spike)
+
+
+pydantic
+pytest
+pytest-asyncio
+crewai
+python-dotenv
