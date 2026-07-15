@@ -1,10 +1,52 @@
-{
-    "scene_abc_123": {
-        "element": "Illustration showing: Icon of a computer server",
-        "url": "https://supabase-storage.local/assets/3a619fe7-5238-4cf0-8143-15a9d363232c.png",
+[
+    {
+        "scene_id": "scene_abc_123",
+        "element": "Icon of a computer server",
+        "prompt": "Illustration showing: Icon of a computer server",
+        "url": "https://supabase-storage.local/assets/9d104118-5559-40ea-a063-3b990e96070a.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-15T12:00:00Z"
+    },
+    {
+        "scene_id": "scene_abc_123",
+        "element": "Icon of a computer server",
+        "prompt": "Illustration showing: Icon of a computer server",
+        "url": "https://supabase-storage.local/assets/79822edb-0914-4814-af12-22bb20dd40fe.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-15T12:00:00Z"
+    },
+    {
+        "scene_id": "scene_abc_123",
+        "element": "Icon of a computer server",
+        "prompt": "Illustration showing: Icon of a computer server",
+        "url": "https://supabase-storage.local/assets/cf9f6a22-704a-417a-996a-21af9335f454.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-15T12:00:00Z"
+    },
+    {
+        "scene_id": "scene_abc_123",
+        "element": "Icon of a computer server",
+        "prompt": "Illustration showing: Icon of a computer server",
+        "url": "https://supabase-storage.local/assets/1dbe1032-2516-4fa4-88cc-c84d88dfe4f8.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-15T12:00:00Z"
+    },
+    {
+        "scene_id": "scene_abc_123",
+        "element": "Icon of a computer server",
+        "prompt": "Illustration showing: Icon of a computer server",
+        "url": "https://supabase-storage.local/assets/721cccc1-d018-4f1c-a366-2c7e2af15215.png",
         "type": "image",
         "source": "generated",
         "license": "open-source",
         "registered_at": "2026-07-15T12:00:00Z"
     }
-}
+]
