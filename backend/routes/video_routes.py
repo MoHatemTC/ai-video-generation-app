@@ -7,9 +7,8 @@ from dotenv import load_dotenv
 
 # We updated these imports to match your manager's requested folder structure!
 from backend.app.pipeline.orchestrator import process_video_job
-from backend.app.schemas.video import VideoRequest
+from backend.app.schemas.video import VideoRequest, JobResponse # Imported JobResponse
 
-# Set up logging for error handling
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -26,7 +25,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Use APIRouter instead of FastAPI app directly
 router = APIRouter()
 
-@router.post("/api/generate")
+@router.post("/api/generate", response_model=JobResponse) # Added response_model here!
 async def generate_video(request: VideoRequest, background_tasks: BackgroundTasks):
     try:
         # 1. Create a new record in Supabase (Added user_id mapping - Point 6)
