@@ -3,7 +3,7 @@ Timestamp schemas for the Alignment stage.
 
 This module defines the public output contract produced by the
 Alignment Service (TimestampMap), as well as the expected upstream
-input contracts (Script and AudioTrack). It is intentionally independent
+input contracts (AudioTrack). It is intentionally independent
 from WhisperX so downstream services (Animation, Composition, Rendering)
 never depend on provider-specific objects.
 
@@ -13,26 +13,12 @@ and missing timings are handled gracefully to prevent pipeline crashes.
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-
-class ScriptSegment(BaseModel):
-    """Represents a single segment or paragraph of the generated script."""
-    segment_id: str = Field(..., description="Unique identifier for the script segment (e.g., 'seg_01')")
-    text: str = Field(..., description="The narration text for this segment")
-    visual_cue: Optional[str] = Field(None, description="The intended visual cue for this segment")
-    start: Optional[float] = Field(None, description="Rough start boundary estimate")
-    end: Optional[float] = Field(None, description="Rough end boundary estimate")
-
-class Script(BaseModel):
-    """The complete script containing ordered segments."""
-    segments: List[ScriptSegment] = Field(..., description="Ordered list of script segments")
-
 class AudioTrack(BaseModel):
     """Reference to the generated voiceover audio file."""
     audio_id: str = Field(..., description="Unique identifier for the audio generation")
     audio_path: str = Field(..., description="File path or URI to the generated TTS audio file")
     language: str = Field("en", description="Language code for the audio (e.g., 'en', 'fr')")
     duration: Optional[float] = Field(None, description="Total duration of the audio in seconds, if known")
-
 
 class WordTimestamp(BaseModel):
     """Precise timing for a single spoken word, with identifiers for downstream linking.
@@ -42,7 +28,7 @@ class WordTimestamp(BaseModel):
     without needing segment-level grouping.
     """
     word_id: str = Field(..., description="Unique identifier for this word (e.g., 'word_1')")
-    segment_id: str = Field(..., description="The script segment this word belongs to")
+    segment_id: int = Field(..., description="The script segment this word belongs to")
     word_index: int = Field(..., description="0-based position of the word within its segment")
     word: str = Field(..., description="The specific word token")
     start_seconds: Optional[float] = Field(None, description="Start time of the word in seconds. May be None if unaligned.")
@@ -58,14 +44,16 @@ class SegmentTimestamp(BaseModel):
     don't have to re-derive segment boundaries by scanning the flat word
     list themselves. `start`/`end` are the min/max of the segment's aligned
     word timings when at least one word aligned successfully; otherwise
-    they fall back to the rough character-proportional estimate computed
-    before alignment, so a segment is never left without a boundary.
+    they fall back to a rough character-proportional estimate computed by
+    the alignment service before alignment ran (see AlignmentService.
+    _prepare_segments_for_alignment), so a segment is never left without a
+    boundary.
     `words` duplicates (by reference) the same WordTimestamp objects that
     also appear in TimestampMap.word_timestamps, for convenience when a
     consumer only cares about one segment at a time -- it is not a
     different source of truth from the flat list.
     """
-    segment_id: str = Field(..., description="References the original ScriptSegment ID")
+    segment_id: int = Field(..., description="References the original ScriptSegment ID")
     start: Optional[float] = Field(None, description="Start time of the segment in seconds")
     end: Optional[float] = Field(None, description="End time of the segment in seconds")
     words: List[WordTimestamp] = Field(default_factory=list, description="Word-level timestamps within this segment")
