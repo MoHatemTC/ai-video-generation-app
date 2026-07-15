@@ -33,3 +33,18 @@ CREATE TABLE IF NOT EXISTS videos (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- STREAMING_CHUNK: Creating function to automatically update the timestamp
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- STREAMING_CHUNK: Attaching trigger to the videos table
+CREATE TRIGGER update_videos_modtime
+    BEFORE UPDATE ON videos
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_column();
