@@ -1,34 +1,34 @@
 import os
-
-from dotenv import load_dotenv
-
-load_dotenv()  # must run before any module reads os.getenv for API keys
-
 from fastapi import FastAPI
+from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.db import init_db
-from backend.routes import intake, videos
+# Import the router we just created
+from backend.routes.video_routes import router as video_router
 
-app = FastAPI(title=os.getenv("APP_NAME", "Sprints Video Studio"))
+load_dotenv()
 
+# Read the frontend URL from environment, default to localhost for development
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+# Initialize API
+app = FastAPI(
+    title="Sprints Video Studio API",
+    description="Backend orchestration for AI video generation."
+)
+
+# Add CORS Middleware to allow React frontend to connect
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten to the deployed frontend origin before production
+    allow_origins=[FRONTEND_URL], # Changed from ["*"] to [FRONTEND_URL]
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Include the routes from the routes/ folder (following company rules!)
+app.include_router(video_router)
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
-
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "app": app.title}
-
-
-app.include_router(intake.router)
-app.include_router(videos.router)
+@app.get("/")
+def read_root():
+    return {"message": "Sprints Video Studio API is running!"}

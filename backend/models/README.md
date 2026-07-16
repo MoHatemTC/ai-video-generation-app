@@ -1,16 +1,15 @@
-## Sprint 1: Intake & Transcript Lane Documentation
+# Models
 
-### 1. Architecture Overview
-This component serves as the entry point for the Sprints Video Studio pipeline. It intakes user instructions and processes them through an AI agent to produce a structured, validated script layout suitable for downstream rendering.
+Create data models here.
 
-### 2. Workflow Sequence
-1. **Intake Endpoint (`/api/intake.py`)**: Accepts topic text and parameters (`target_length`, `audience_level`, `tone`).
-2. **Transcript Agent (`/agents/transcript.py`)**: Processes input using system prompts explicitly optimized for structural adherence and factual reliability.
-3. **Schema Verification (`/schemas/script.py`)**: Runs strict validation via Pydantic to verify payload parameters prior to returning data.
+Examples interns may create:
 
----
+- `user.py`
+- `video.py` - the job, its status, and output link.
+- `script.py` - script segments.
+- `scene.py` - scene layout and visual cues.
+- `asset.py` - asset type, source, and license.
+- `audio_track.py`
+- `timestamp_map.py`
 
-### 3. Market Research & Educational Aesthetics Note
-To align with global micro-segmentation industry standards, pedagogical video structures have been reviewed:
-- **Cognitive Load Control**: Text narration segments are limited to small atomic intervals to guarantee high audience retention rates.
-- **Visual Cue Synchronization**: Integrated directional cues into each scene element to perfectly align voice synthesis with targeted runtime rendering displays.
+Models should describe the data clearly and avoid unnecessary complexity at the start.
