@@ -18,7 +18,7 @@ import numpy as np
 # Use the team's canonical script model
 from models.script import VideoScriptBlueprint
 
-from app.schemas.timestamps import (
+from backend.schemas.timestamps import (
     AudioTrack,
     TimestampMap,
     WordTimestamp,

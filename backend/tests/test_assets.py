@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from app.services.assets.images import process_scene_elements
+from services.assets.images import process_scene_elements
 
 pytestmark = pytest.mark.asyncio(loop_scope="function")
 
 @pytest.mark.asyncio
-@patch("app.services.assets.images.Crew.kickoff")
+@patch("services.assets.images.Crew.kickoff")
 async def test_process_scene_elements_success(mock_kickoff):
     mock_result = MagicMock()
     mock_result.raw = "An ultra-detailed digital illustration."
@@ -29,7 +29,7 @@ async def test_process_scene_elements_success(mock_kickoff):
     assert result["assets"][0]["scene_id"] == "scene_1"
 
 @pytest.mark.asyncio
-@patch("app.services.assets.images.Crew.kickoff")
+@patch("services.assets.images.Crew.kickoff")
 async def test_process_scene_elements_fallback_on_failure(mock_kickoff):
     mock_kickoff.side_effect = Exception("Mock LLM error")
     mock_scene_data = {

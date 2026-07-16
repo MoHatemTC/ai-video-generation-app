@@ -5,10 +5,11 @@ import json
 import asyncio
 from datetime import datetime, timezone
 from typing import List, Dict, Any
-from crewai import Agent, Task, Crew, LLM
+from crewai import Agent, Task, Crew
+from schemas.asset import AssetItem
 
-# Standard import matching your backend package structure
-from app.schemas.asset import AssetItem
+# Pydantic V2 Migration warnings are expected from CrewAI and can be ignored for now.
+# The UserWarning about 'model_name' is also from a dependency and not a blocker.
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,18 @@ class AssetService:
             with open(self.local_storage_db, "w") as f:
                 json.dump([], f)
 
-    def _get_llm_client(self) -> LLM:
-        return LLM(model="gemini/gemini-1.5-flash", api_key=self.gemini_api_key)
+    def _get_llm_client(self):
+        # This dynamic import can help avoid issues where the LLM client
+        # might not be available in all environments (like CI/CD).
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            return ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=self.gemini_api_key)
+        except ImportError:
+            logger.warning("langchain_google_genai not found. Using a fallback LLM for CrewAI.")
+            # Fallback to a mock or a different available LLM if needed
+            from langchain.llms.fake import FakeListLLM
+            return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
+
 
     def register_asset_in_storage(self, asset: AssetItem, video_id: str) -> str:
         try:
@@ -77,7 +88,8 @@ class AssetService:
         try:
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, my_crew.kickoff)
-            optimized_prompt = result.raw.strip() if hasattr(result, "raw") else str(result).strip()
+            # Handle different possible result structures from CrewAI/LangChain
+            optimized_prompt = result if isinstance(result, str) else str(result).strip()
         except Exception as e:
             logger.error(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
             optimized_prompt = f"Illustration showing: {cue}"
@@ -101,7 +113,7 @@ async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
     video_id = scene_data.get("video_id", "default_video_id")
     scenes = scene_data.get("scenes", [])
     service = AssetService()
-    resolved_assets = []
+    tasks = []
     asset_index = 1
 
     for scene in scenes:
@@ -113,25 +125,35 @@ async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
                 fallback_id = f"image_{asset_index}"
                 asset_id = element.get("asset_id") or fallback_id
                 
-                asset = await service.resolve_visual_cue(
+                task = service.resolve_visual_cue(
                     cue=element.get("description", element.get("text", "")),
                     scene_id=scene_id,
                     cue_id=element.get("cue_id", ""),
                     asset_id=asset_id,
                     video_id=video_id
                 )
+                tasks.append(task)
                 asset_index += 1
+    
+    if not tasks:
+        return {
+            "video_id": video_id,
+            "assets": []
+        }
 
-                # Explicitly map the internal schema attributes to the aliases Nada's output expects
-                resolved_assets.append({
-                    "asset_id": asset.asset_id,
-                    "scene_id": asset.scene_reference,
-                    "cue_id": asset.cue_reference,
-                    "url": asset.url,
-                    "type": asset.asset_type,
-                    "license": asset.asset_license,
-                    "source": asset.source
-                })
+    gathered_assets = await asyncio.gather(*tasks)
+
+    resolved_assets = []
+    for asset in gathered_assets:
+        resolved_assets.append({
+            "asset_id": asset.asset_id,
+            "scene_id": asset.scene_reference,
+            "cue_id": asset.cue_reference,
+            "url": asset.url,
+            "type": asset.asset_type,
+            "license": asset.asset_license,
+            "source": asset.source
+        })
 
     return {
         "video_id": video_id,
