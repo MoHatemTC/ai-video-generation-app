@@ -1,3 +1,1 @@
-from .images import AssetService
-
-__all__ = ["AssetService"]
+from .images import AssetService, process_scene_elements

@@ -1,12 +1,19 @@
-# Tests
+# 🎬 AI Video Generation Platform
 
-Create backend tests here.
+FastAPI app implementing all 8 pipeline stages end-to-end. 
+Entry point: `backend/main.py` (`uvicorn backend.main:app --reload`).
 
-Examples interns may create:
+---
 
-- `test_health.py`
-- `test_transcript_agent.py`
-- `test_scene_planner.py`
-- `test_alignment.py`
+# 🎨 Asset Service Lane — Sprint 1 (Omar Eldaly)
 
-Every important service should have at least one test. Pipeline stages that parse AI output should be tested against both valid and malformed responses.
+This service takes raw, loose visual cues from scripts/slides and refines them into highly detailed, ready-to-use descriptive image generation prompts using specialized AI agents.
+
+## Core Features
+- **Asset Metadata Registry**: Logs generated assets dynamically into `data/supabase_asset_metadata.json`.
+- **Async Pipeline Support**: Fully integrated with the backend orchestrator loop using standard dict data contracts.
+- **Robust Mock Testing**: Covered by automated unit tests under `backend/tests/test_assets.py`.
+
+## Directory Map
+- `main.py` - FastAPI app, CORS, DB init, router registration, `/health`.
+- `backend/app/services/assets/` - Contains our image handling and generation pipelines.

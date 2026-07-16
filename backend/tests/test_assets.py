@@ -1,28 +1,41 @@
 import pytest
-from backend.app.services.assets.images import AssetService
-from backend.app.schemas.asset import AssetResponseContract 
+from unittest.mock import patch, MagicMock
+from app.services.assets.images import process_scene_elements
+
+pytestmark = pytest.mark.asyncio(loop_scope="function")
 
 @pytest.mark.asyncio
-async def test_asset_lane_flow_and_contract():
-    """Validates that a sample list of visual elements generates a correct contract payload."""
-    service = AssetService()
-    mock_scene_id = "scene_abc_123"
-    mock_visual_elements = ["Icon of a computer server"]
+@patch("app.services.assets.images.Crew.kickoff")
+async def test_process_scene_elements_success(mock_kickoff):
+    mock_result = MagicMock()
+    mock_result.raw = "An ultra-detailed digital illustration."
+    mock_kickoff.return_value = mock_result
+
+    mock_scene_data = {
+        "video_id": "video_test_123",
+        "scenes": [
+            {
+                "scene_id": "scene_1",
+                "visual_elements": [{"cue_id": "cue_1", "description": "Test", "asset_id": "image_1"}]
+            }
+        ]
+    }
+
+    result = await process_scene_elements(mock_scene_data)
     
-    # Execute the processing slice
-    output = await service.process_scene_elements(mock_visual_elements, mock_scene_id)
-    
-    # Assertions to guarantee validation success
-    assert isinstance(output, AssetResponseContract)
-    assert len(output.assets) == 1
-    
-    # The 'element' field should hold the original visual cue
-    assert output.assets[0].element == "Icon of a computer server"
-    
-    # The 'prompt' field should contain the expanded, optimized output from the agent
-    assert len(output.assets[0].prompt) > 0
-    assert output.assets[0].prompt != "Icon of a computer server"
-    
-    # Verify metadata, URLs, and licenses
-    assert "supabase" in output.assets[0].url
-    assert output.assets[0].asset_license == "open-source"
+    # Assert metadata aliases map correctly
+    assert result["video_id"] == "video_test_123"
+    assert len(result["assets"]) == 1
+    assert result["assets"][0]["scene_id"] == "scene_1"
+
+@pytest.mark.asyncio
+@patch("app.services.assets.images.Crew.kickoff")
+async def test_process_scene_elements_fallback_on_failure(mock_kickoff):
+    mock_kickoff.side_effect = Exception("Mock LLM error")
+    mock_scene_data = {
+        "video_id": "video_test_fallback",
+        "scenes": [{"scene_id": "scene_2", "visual_elements": [{"cue_id": "cue_2", "asset_id": "image_2"}]}]
+    }
+
+    result = await process_scene_elements(mock_scene_data)
+    assert result["assets"][0]["asset_id"] == "image_2"
