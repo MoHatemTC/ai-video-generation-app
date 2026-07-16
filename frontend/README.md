@@ -1,21 +1,14 @@
 # Frontend
 
-Minimal React (Vite) app covering the full user flow from PRD 6.1: submit an
-instruction, review/edit the generated script, watch stage progress, and
-download the finished video.
+This folder will contain the user interface.
 
-## Structure
+Interns should create the actual React files when frontend tasks start.
 
-- `src/pages/RequestPage.jsx` - submit an instruction (+ tone/audience/length).
-- `src/pages/StatusPage.jsx` - polls job status, shows per-stage progress,
-  the script review/edit step, and the final video player + download button.
-- `src/api/client.js` - all backend calls in one place.
+## Suggested Structure
 
-## Run
+- `src/pages/` - screens such as Request, Status, Review, and Result.
+- `src/components/` - reusable UI pieces.
+- `src/api/` - API request helpers.
+- `public/` - public assets.
 
-```bash
-npm install
-npm run dev
-```
-
-Proxies API calls to `http://localhost:8000` (the backend) — see `vite.config.js`.
+The frontend lets a user submit an instruction, watch per-stage progress, review and edit the script and scene plan before rendering, and download the finished video.
