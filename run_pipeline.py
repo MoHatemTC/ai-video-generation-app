@@ -10,9 +10,8 @@ import json
 import sys
 from pathlib import Path
 
-from agents.animation import create_animation_map
-from agents.final_render import render_final_video, save_animation_metadata
-
+from backend.services.animation import sync_animation
+from backend.services.render import render_video
 
 def main() -> None:
     if len(sys.argv) != 3:
@@ -30,7 +29,7 @@ def main() -> None:
         composition_data = json.load(file)
 
     # Stage 7 - Animation Engine
-    animation_data = create_animation_map(composition_data)
+    animation_data = sync_animation(composition_data, timestamp_map)
     video_id = composition_data["video_id"]
     metadata_path = Path("outputs") / f"{video_id}_animation_metadata.json"
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
