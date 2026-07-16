@@ -79,3 +79,36 @@ Basic product flow:
 ## Job Management
 
 Rendering is long-running, so generation runs as an asynchronous job. The API creates a job, a worker runs the pipeline stages, and the frontend polls status until the video is ready.
+
+Implementation: `POST /videos` runs stage 1 (script) synchronously and returns
+immediately with `status: awaiting_review`, so the user always reviews the
+script before any paid/slow stage runs (PRD 6.2). `POST /videos/{id}/approve`
+schedules stages 2-8 as a FastAPI `BackgroundTask`; `GET /videos/{id}` is
+polled by the frontend every 2s until `completed` or `failed`. Every stage
+writes its output to the `videos` row immediately after it finishes, so a
+failed job can be inspected (or, as a future improvement, resumed from the
+last successful stage instead of restarting).
+
+## ADR: Composition & Animation Engine (Sprint 3 spike)
+
+**Decision:** ffmpeg `overlay` filter with `enable='between(t, appear_time, scene_end)'`
+expressions per visual element, driven by the timestamps from the alignment
+stage, plus the `subtitles` filter (libass) for captions. Implemented in
+`backend/services/render.py`.
+
+**Alternatives considered:**
+- **Manim** - powerful for math/diagram animation, but pulls in a LaTeX
+  toolchain and is slower to render; overkill for slide+voiceover style (PRD 1.4).
+- **Remotion (React-based)** - great DX for JS teams, but needs a headless
+  Chromium render step, which is a heavy runtime dependency for what is
+  currently a Python backend.
+
+**Why ffmpeg won for v1:** ffmpeg is already a hard requirement for muxing
+audio into the final video regardless of which composition approach is
+picked, so it adds zero new runtime dependencies. It renders directly to
+`.mp4` without an intermediate frame-sequence export step.
+
+**Known trade-off:** element entrances are a hard cut-in, not an eased
+fade/slide-in. A good next iteration is to fade each overlay in using
+`alpha='min(1,(t-appear_time)/0.3)'` instead of a boolean `enable` gate.
+This does not change the chosen engine, only the per-element filter graph.

@@ -18,3 +18,32 @@ pytest
 pytest-asyncio
 crewai
 python-dotenv
+# Web framework & server
+fastapi==0.139.0
+uvicorn[standard]==0.34.0
+
+# Config
+python-dotenv==1.0.1
+
+# Data validation
+pydantic==2.9.2
+
+# Database
+sqlalchemy==2.0.51
+
+# AI providers
+openai==2.45.0
+
+# HTTP client (used by asset/alignment services)
+httpx==0.28.1
+
+# File uploads (video download responses)
+python-multipart==0.0.20
+
+# Rendering: SVG -> raster + video assembly
+Pillow==11.0.0
+cairosvg==2.7.1
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
