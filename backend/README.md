@@ -1,18 +1,17 @@
 # Backend
 
-FastAPI app implementing all 8 pipeline stages end-to-end. Entry point:
-`backend/main.py` (`uvicorn backend.main:app --reload`).
+This folder will contain the generation pipeline, API, prompts, data models, and tests.
+
+Interns should create implementation files as part of assigned tasks.
 
 ## Folder Guide
 
-- `main.py` - FastAPI app, CORS, DB init, router registration, `/health`.
-- `db.py` - SQLAlchemy engine/session setup (SQLite by default).
-- `routes/` - `intake.py` (quick script-only preview), `videos.py` (full job lifecycle).
-- `services/` - one file per pipeline stage, plus `pipeline.py` (orchestrator)
-  and `ai_client.py` (shared, swappable LLM/TTS client).
-- `models/` - `db_models.py` (SQLAlchemy: `User`, `Video`), plus Pydantic
-  schemas for each stage's structured output (`script.py`, `scene.py`, `timeline.py`, `video.py`).
-- `prompts/` - versioned prompt templates, kept out of service code.
-- `tests/` - one test module per service, plus a full pipeline integration test.
+- `routes/` - API endpoints.
+- `services/` - pipeline stages and business logic.
+- `models/` - data models.
+- `prompts/` - AI prompts.
+- `tests/` - automated tests.
 
-See `docs/setup.md` for how to run it and `docs/api.md` for the endpoint reference.
+## Rule
+
+Do not put all logic in one file. Keep routes small, and make each pipeline stage a separate, testable service that consumes and returns structured JSON.

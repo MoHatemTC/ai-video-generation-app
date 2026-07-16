@@ -1,26 +1,28 @@
-name: Backend Tests
+name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+  push:
+    branches:
+      - main
 
 jobs:
-  test:
+  scaffold-check:
+    name: Scaffold Check
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run tests
-        run: pytest backend/tests/ -v
+      - name: Check required files and folders
+        run: |
+          test -f README.md
+          test -f CONTRIBUTING.md
+          test -f .env.example
+          test -f docs/PRD.md
+          test -d backend
+          test -d frontend
+          test -d data
+          test -d scripts
+          test -d docs

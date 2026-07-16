@@ -2,20 +2,7 @@
 
 AI-powered e-learning video generator that turns a simple instruction — e.g. *"I want a video about X, generate it"* — into a complete, MOOC-style video with script, voiceover, timed visuals, and narration-synced animation.
 
-## Current Status
-
-The full 8-stage pipeline is implemented and runs end-to-end (backend
-FastAPI + SQLite, minimal React frontend), with real ffmpeg rendering
-producing a playable `.mp4`. Script generation and voiceover need a real
-`OPENAI_API_KEY`; every downstream stage runs for real either way, with
-documented fallbacks where no key is set (see `docs/setup.md`, "Running
-without an API key"). See `docs/tasks.md` for exactly what's done vs. still
-a follow-up (e.g. real mermaid diagrams, GIF/clip generation, a durable job
-queue, and CI).
-
-This repository started as a learning scaffold for an internship cohort; the
-documentation/contribution-workflow framing below still applies to anyone
-extending it further.
+This repository is intentionally a learning scaffold. It provides the project structure, documentation, contribution rules, and collaboration workflow. Interns should create the actual feature files as part of their assigned tasks.
 
 ## Project Areas
 
