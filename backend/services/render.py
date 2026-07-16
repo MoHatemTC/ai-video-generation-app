@@ -69,3 +69,39 @@ def render_video(composed: dict, audio_path: str, srt_path: str | None, output_p
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg render failed:\n{result.stderr[-4000:]}")
     return output_path
+from pathlib import Path
+
+
+def render_final_video(animation_data: dict, audio_data: dict) -> str:
+    """
+    Stage 8 wrapper used by the orchestrator.
+
+    Input:
+        animation_data: output from sync_animation()
+        audio_data:
+        {
+            "video_id": "...",
+            "audio_file_path": "..."
+        }
+
+    Output:
+        "/absolute/path/to/video.mp4"
+    """
+
+    video_id = audio_data["video_id"]
+
+    output_dir = Path("outputs")
+    output_dir.mkdir(exist_ok=True)
+
+    output_path = output_dir / f"{video_id}.mp4"
+
+    composed = animation_data["composed_layout"]
+
+    subtitle_path = animation_data.get("subtitle_file")
+
+    return render_video(
+        composed=composed,
+        audio_path=audio_data["audio_file_path"],
+        srt_path=subtitle_path,
+        output_path=str(output_path),
+    )
