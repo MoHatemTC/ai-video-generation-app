@@ -297,5 +297,31 @@
         "source": "generated",
         "license": "open-source",
         "registered_at": "2026-07-16T20:03:57.949888+00:00"
+    },
+    {
+        "video_id": "video_test_123",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "Test",
+        "prompt": "<MagicMock name='kickoff()' id='1996688269600'>",
+        "url": "https://supabase-storage.local/assets/124dd947-5d4c-4cf0-81c8-4de29e87be3f.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-16T20:34:28.582773+00:00"
+    },
+    {
+        "video_id": "video_test_fallback",
+        "asset_id": "image_2",
+        "scene_id": "scene_2",
+        "cue_id": "cue_2",
+        "element": "",
+        "prompt": "Illustration showing: ",
+        "url": "https://supabase-storage.local/assets/6d98ab8d-b023-436c-9f79-01495b4b5a7f.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-16T20:34:29.279896+00:00"
     }
 ]

@@ -31,7 +31,7 @@ class AssetService:
         except ImportError:
             logger.warning("langchain_google_genai not found. Using a fallback LLM for CrewAI.")
             # Fallback to a mock or a different available LLM if needed
-            from langchain.llms.fake import FakeListLLM
+            from langchain_community.llms.fake import FakeListLLM
             return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
 
 
