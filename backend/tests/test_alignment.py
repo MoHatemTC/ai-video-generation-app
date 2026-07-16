@@ -105,24 +105,24 @@ def test_alignment_success(mock_whisperx):
     # Assert first word has correct fields
     first_word = result.word_timestamps[0]
     assert first_word.word_id == "word_1"
-    assert first_word.segment_id == 1  # Updated assertion
+    assert first_word.segment_id == "seg_1"
     assert first_word.word_index == 0
     assert first_word.word == "Hello"
-    assert first_word.start_seconds == 0.1
-    assert first_word.end_seconds == 0.4
+    assert first_word.start == 0.1
+    assert first_word.end == 0.4
     assert first_word.score == 0.9
     
     # Assert second word in first segment
     second_word = result.word_timestamps[1]
     assert second_word.word_id == "word_2"
-    assert second_word.segment_id == 1  # Updated assertion
+    assert second_word.segment_id == "seg_1"
     assert second_word.word_index == 1
     assert second_word.word == "world."
     
     # Assert word_id continues sequentially across segment boundaries
     third_word = result.word_timestamps[2]
     assert third_word.word_id == "word_3"
-    assert third_word.segment_id == 2  # Updated assertion
+    assert third_word.segment_id == "seg_2"
     assert third_word.word_index == 0  # Resets per segment
     assert third_word.word == "This"
     
@@ -130,10 +130,10 @@ def test_alignment_success(mock_whisperx):
     missing_word = result.word_timestamps[3]
     assert missing_word.word_id == "word_4"
     assert missing_word.word == "is"
-    assert missing_word.segment_id == 2  # Updated assertion
+    assert missing_word.segment_id == "seg_2"
     assert missing_word.word_index == 1
-    assert missing_word.start_seconds is None
-    assert missing_word.end_seconds is None
+    assert missing_word.start is None
+    assert missing_word.end is None
     assert missing_word.score is None
 
 def test_segment_timestamps_aggregation(mock_whisperx):
@@ -146,17 +146,15 @@ def test_segment_timestamps_aggregation(mock_whisperx):
     assert len(result.segment_timestamps) == 2
 
     seg_1 = result.segment_timestamps[0]
-    assert seg_1.segment_id == 1  # Updated assertion
+    assert seg_1.segment_id == "seg_1"
     assert seg_1.start == 0.1  # min start of "Hello"/"world."
     assert seg_1.end == 0.9    # max end of "Hello"/"world."
-    assert len(seg_1.words) == 2
 
     seg_2 = result.segment_timestamps[1]
-    assert seg_2.segment_id == 2  # Updated assertion
+    assert seg_2.segment_id == "seg_2"
     # "is" has no timing and must be excluded from the min/max, not crash it
     assert seg_2.start == 1.1  # min start across This/a/test. (is excluded)
     assert seg_2.end == 1.9    # max end across This/a/test. (is excluded)
-    assert len(seg_2.words) == 4
 
 def test_alignment_retries_on_failure(mock_whisperx):
     """Test that the service retries on failure and eventually raises an error."""
@@ -197,8 +195,8 @@ def test_output_matches_downstream_contract(mock_whisperx):
         assert "segment_id" in word_entry
         assert "word_index" in word_entry
         assert "word" in word_entry
-        assert "start_seconds" in word_entry
-        assert "end_seconds" in word_entry
+        assert "start" in word_entry
+        assert "end" in word_entry
     
     # Validate word_ids can be used as lookup keys (all unique)
     word_ids = [w["word_id"] for w in output["word_timestamps"]]
@@ -207,7 +205,7 @@ def test_output_matches_downstream_contract(mock_whisperx):
     # Validate a specific word can be found by word_id (animation trigger use case)
     word_3 = next(w for w in output["word_timestamps"] if w["word_id"] == "word_3")
     assert word_3["word"] == "This"
-    assert word_3["segment_id"] == 2  # Updated assertion
+    assert word_3["segment_id"] == "seg_2"
 
 def test_audio_duration_from_array_when_not_provided(mock_whisperx):
     """Test that audio_duration_seconds is computed from the audio array
@@ -273,5 +271,5 @@ def test_segment_count_mismatch_handled_gracefully(mock_whisperx):
 
     # Only the overlapping segment (seg_01) should be present; no crash.
     assert len(result.segment_timestamps) == 1
-    assert result.segment_timestamps[0].segment_id == 1  # Updated assertion
+    assert result.segment_timestamps[0].segment_id == "seg_1"
     assert len(result.word_timestamps) == 2

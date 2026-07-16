@@ -28,11 +28,11 @@ class WordTimestamp(BaseModel):
     without needing segment-level grouping.
     """
     word_id: str = Field(..., description="Unique identifier for this word (e.g., 'word_1')")
-    segment_id: int = Field(..., description="The script segment this word belongs to")
+    segment_id: str = Field(..., description="The script segment this word belongs to")
     word_index: int = Field(..., description="0-based position of the word within its segment")
     word: str = Field(..., description="The specific word token")
-    start_seconds: Optional[float] = Field(None, description="Start time of the word in seconds. May be None if unaligned.")
-    end_seconds: Optional[float] = Field(None, description="End time of the word in seconds. May be None if unaligned.")
+    start: Optional[float] = Field(None, description="Start time of the word in seconds. May be None if unaligned.")
+    end: Optional[float] = Field(None, description="End time of the word in seconds. May be None if unaligned.")
     score: Optional[float] = Field(None, description="Confidence score from the alignment model")
 
 class SegmentTimestamp(BaseModel):
@@ -48,15 +48,10 @@ class SegmentTimestamp(BaseModel):
     the alignment service before alignment ran (see AlignmentService.
     _prepare_segments_for_alignment), so a segment is never left without a
     boundary.
-    `words` duplicates (by reference) the same WordTimestamp objects that
-    also appear in TimestampMap.word_timestamps, for convenience when a
-    consumer only cares about one segment at a time -- it is not a
-    different source of truth from the flat list.
     """
-    segment_id: int = Field(..., description="References the original ScriptSegment ID")
+    segment_id: str = Field(..., description="References the original ScriptSegment ID")
     start: Optional[float] = Field(None, description="Start time of the segment in seconds")
     end: Optional[float] = Field(None, description="End time of the segment in seconds")
-    words: List[WordTimestamp] = Field(default_factory=list, description="Word-level timestamps within this segment")
 
 class TimestampMap(BaseModel):
     """The final mapped output connecting all audio timings to the script.

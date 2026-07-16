@@ -28,7 +28,14 @@ from app.schemas.timestamps import (
 logger = logging.getLogger(__name__)
 
 # Rough (pre-alignment) boundary estimate for a single segment: (start, end).
-RoughBounds = Dict[int, Tuple[float, float]]
+RoughBounds = Dict[str, Tuple[float, float]]
+
+def normalize_segment_id(seg_id: Any) -> str:
+    """Standardizes segment IDs to the 'seg_X' string format."""
+    seg_id_str = str(seg_id)
+    if not seg_id_str.startswith("seg_"):
+        return f"seg_{seg_id_str}"
+    return seg_id_str
 
 class AlignmentService:
     def __init__(self, device: str = "cpu"):
@@ -163,7 +170,7 @@ class AlignmentService:
 
             seg_start = current_time
             seg_end = current_time + paragraph_duration
-            rough_bounds[seg.segment_id] = (seg_start, seg_end)
+            rough_bounds[normalize_segment_id(seg.segment_id)] = (seg_start, seg_end)
 
             # Add a padding/buffer on both sides for the search window as requested
             start_time = max(0.0, seg_start - 10.0)
@@ -194,7 +201,7 @@ class AlignmentService:
         Produces a flat word_timestamps list where each word carries its own
         word_id, segment_id, and word_index so downstream stages can link
         visual cues to specific spoken words, plus a segment_timestamps list
-        aggregating start/end/words per script segment.
+        aggregating start/end per script segment.
 
         `rough_bounds` (from _prepare_segments_for_alignment) is used as the
         segment-level start/end fallback when a segment has no successfully
@@ -224,6 +231,7 @@ class AlignmentService:
         for idx in range(segment_count):
             aligned_seg = whisperx_segments[idx]
             original_script_seg = script.segments[idx]
+            seg_id_str = normalize_segment_id(original_script_seg.segment_id)
 
             segment_words: List[WordTimestamp] = []
 
@@ -232,11 +240,11 @@ class AlignmentService:
 
                 word_ts = WordTimestamp(
                     word_id=f"word_{global_word_counter}",
-                    segment_id=original_script_seg.segment_id,
+                    segment_id=seg_id_str,
                     word_index=word_idx,
                     word=word_data["word"],
-                    start_seconds=word_data.get("start"),
-                    end_seconds=word_data.get("end"),
+                    start=word_data.get("start"),
+                    end=word_data.get("end"),
                     score=word_data.get("score"),
                 )
                 all_words.append(word_ts)
@@ -247,21 +255,20 @@ class AlignmentService:
             # fall back to the rough character-proportional estimate computed
             # up front in _prepare_segments_for_alignment, so the segment still
             # has a usable boundary for scene/segment-level consumers.
-            starts = [w.start_seconds for w in segment_words if w.start_seconds is not None]
-            ends = [w.end_seconds for w in segment_words if w.end_seconds is not None]
+            starts = [w.start for w in segment_words if w.start is not None]
+            ends = [w.end for w in segment_words if w.end is not None]
 
             fallback_start, fallback_end = rough_bounds.get(
-                original_script_seg.segment_id, (None, None)
+                seg_id_str, (None, None)
             )
             seg_start = min(starts) if starts else fallback_start
             seg_end = max(ends) if ends else fallback_end
 
             segment_timestamps.append(
                 SegmentTimestamp(
-                    segment_id=original_script_seg.segment_id,
+                    segment_id=seg_id_str,
                     start=seg_start,
                     end=seg_end,
-                    words=segment_words,
                 )
             )
 
