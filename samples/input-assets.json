@@ -1,0 +1,23 @@
+{
+  "video_id": "video_multimedia_001",
+  "assets": [
+    {
+      "asset_id": "asset_1",
+      "scene_id": "scene_2",
+      "cue_id": "cue_2",
+      "url": "sample_inputs/placeholder.svg",
+      "type": "image",
+      "license": "project-generated",
+      "source": "generated"
+    },
+    {
+      "asset_id": "asset_2",
+      "scene_id": "scene_3",
+      "cue_id": "cue_5",
+      "url": "sample_inputs/placeholder.svg",
+      "type": "image",
+      "license": "project-generated",
+      "source": "generated"
+    }
+  ]
+}

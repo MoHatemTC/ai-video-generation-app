@@ -1,524 +1,159 @@
+"""Composition service: turn stage contracts into renderer-ready scene maps."""
+
 from __future__ import annotations
 
-import base64
-import mimetypes
-import textwrap
-from html import escape
-from pathlib import Path
-
 from backend.app.schemas.composed_scene import (
-    Canvas,
-    ComposedElement,
-    ComposedScene,
-    ElementRole,
-    ElementType,
-    LayoutName,
-    PlannedElement,
-    Position,
-    ScenePlan,
-    Size,
+    AlignmentData, AssetCollection, AssetRecord, Canvas, ComposedElement,
+    ComposedLayout, ComposedScene, CompositionOutput, ElementType, LayoutName,
+    PlannerScene, Position, ScenePlanDocument, SegmentTimestamp, Size,
+    VisualElement, WordTimestamp,
 )
 
 
 class CompositionService:
-    """Convert a high-level ScenePlan into a static ComposedScene."""
+    """Build deterministic 1920×1080 slide layouts for the render stage."""
 
-    CANVAS_WIDTH = 1920
-    CANVAS_HEIGHT = 1080
-    BACKGROUND_COLOR = "#FFFFFF"
+    CANVAS = Canvas(width=1920, height=1080)
+    MARGIN_X = 120.0
+    CONTENT_TOP = 250.0
+    BOTTOM_MARGIN = 90.0
+    COLUMN_GAP = 100.0
 
-    MARGIN_X = 120
-    TOP_MARGIN = 70
-    BOTTOM_MARGIN = 90
-    TITLE_HEIGHT = 140
-    CONTENT_TOP = 250
-    COLUMN_GAP = 100
+    def compose(self, scene_data: dict, asset_data: dict, timestamp_data: dict) -> dict:
+        """Orchestrator entry point that returns JSON-serialisable output."""
+        return self.compose_video(
+            scene_data=scene_data, asset_data=asset_data, timestamp_data=timestamp_data
+        ).model_dump(mode="json")
 
-    def compose_scene(
+    def compose_video(
         self,
-        scene_plan: ScenePlan | dict,
-    ) -> ComposedScene:
-        """Validate the plan, apply its layout rule, and return a scene."""
+        *,
+        scene_data: ScenePlanDocument | dict,
+        asset_data: AssetCollection | dict,
+        timestamp_data: AlignmentData | dict,
+    ) -> CompositionOutput:
+        planner = ScenePlanDocument.model_validate(scene_data)
+        assets = AssetCollection.model_validate(asset_data)
+        alignment = AlignmentData.model_validate(timestamp_data)
+        self._validate_video_ids(planner, assets, alignment)
 
-        validated_plan = ScenePlan.model_validate(scene_plan)
+        segments = self._unique_by_id(alignment.segment_timestamps, "segment_id")
+        words = self._unique_by_id(alignment.word_timestamps, "word_id")
+        asset_lookup = self._asset_lookup(assets)
+        self._validate_alignment(words, segments)
 
-        canvas = Canvas(
-            width=self.CANVAS_WIDTH,
-            height=self.CANVAS_HEIGHT,
-            background_color=self.BACKGROUND_COLOR,
+        scenes = [
+            self._compose_scene(scene, asset_lookup, segments, words)
+            for scene in planner.scenes
+        ]
+        return CompositionOutput(
+            video_id=planner.video_id,
+            composed_layout=ComposedLayout(scenes=scenes),
         )
 
-        layout_handlers = {
-            LayoutName.TITLE_SLIDE: self._compose_title_slide,
-            LayoutName.IMAGE_LEFT_TEXT_RIGHT:
-                self._compose_image_left_text_right,
-            LayoutName.TEXT_LEFT_IMAGE_RIGHT:
-                self._compose_text_left_image_right,
+    @staticmethod
+    def _validate_video_ids(*documents: object) -> None:
+        video_ids = {document.video_id for document in documents}
+        if len(video_ids) != 1:
+            raise ValueError("video_id must match across Scene Plan, Assets, and Alignment.")
+
+    @staticmethod
+    def _unique_by_id(items: list, field_name: str) -> dict:
+        lookup = {getattr(item, field_name): item for item in items}
+        if len(lookup) != len(items):
+            raise ValueError(f"Duplicate {field_name} values are not allowed.")
+        return lookup
+
+    @staticmethod
+    def _asset_lookup(assets: AssetCollection) -> dict[tuple[str, str, str], AssetRecord]:
+        lookup = {
+            (asset.scene_id, asset.cue_id, asset.asset_id): asset
+            for asset in assets.assets
         }
+        if len(lookup) != len(assets.assets):
+            raise ValueError("Duplicate asset mappings are not allowed.")
+        return lookup
 
-        handler = layout_handlers[validated_plan.layout]
-        composed_elements = handler(validated_plan, canvas)
-
-        scene_start, scene_end = self._timing_for_segments(
-            scene_plan=validated_plan,
-            segment_ids=validated_plan.script_segment_ids,
-        )
-
-        return ComposedScene(
-            scene_id=validated_plan.scene_id,
-            layout=validated_plan.layout,
-            canvas=canvas,
-            script_segment_ids=validated_plan.script_segment_ids,
-            elements=composed_elements,
-            start_time_seconds=scene_start,
-            end_time_seconds=scene_end,
-        )
-
-    def _compose_title_slide(
-        self,
-        scene_plan: ScenePlan,
-        canvas: Canvas,
-    ) -> list[ComposedElement]:
-        """Compose a title slide with an optional centered visual."""
-
-        title = self._require_single_role(
-            scene_plan,
-            ElementRole.TITLE,
-        )
-
-        main_visual = self._optional_single_role(
-            scene_plan,
-            ElementRole.MAIN_VISUAL,
-        )
-
-        elements = [
-            self._build_element(
-                planned=title,
-                position=Position(x=220, y=110),
-                size=Size(width=1480, height=190),
-                layer=2,
-                scene_plan=scene_plan,
-            )
-        ]
-
-        if main_visual is not None:
-            visual_width = 1000
-            visual_height = 560
-
-            elements.append(
-                self._build_element(
-                    planned=main_visual,
-                    position=Position(
-                        x=(canvas.width - visual_width) / 2,
-                        y=370,
-                    ),
-                    size=Size(
-                        width=visual_width,
-                        height=visual_height,
-                    ),
-                    layer=1,
-                    scene_plan=scene_plan,
-                )
-            )
-
-        return elements
-
-    def _compose_image_left_text_right(
-        self,
-        scene_plan: ScenePlan,
-        canvas: Canvas,
-    ) -> list[ComposedElement]:
-        """Compose a title, visual on the left, and text on the right."""
-
-        return self._compose_two_column_layout(
-            scene_plan=scene_plan,
-            canvas=canvas,
-            visual_on_left=True,
-        )
-
-    def _compose_text_left_image_right(
-        self,
-        scene_plan: ScenePlan,
-        canvas: Canvas,
-    ) -> list[ComposedElement]:
-        """Compose a title, text on the left, and visual on the right."""
-
-        return self._compose_two_column_layout(
-            scene_plan=scene_plan,
-            canvas=canvas,
-            visual_on_left=False,
-        )
-
-    def _compose_two_column_layout(
-        self,
-        *,
-        scene_plan: ScenePlan,
-        canvas: Canvas,
-        visual_on_left: bool,
-    ) -> list[ComposedElement]:
-        """Calculate a reusable two-column layout."""
-
-        title = self._require_single_role(
-            scene_plan,
-            ElementRole.TITLE,
-        )
-        body = self._require_single_role(
-            scene_plan,
-            ElementRole.BODY,
-        )
-        main_visual = self._require_single_role(
-            scene_plan,
-            ElementRole.MAIN_VISUAL,
-        )
-
-        content_width = (
-            canvas.width
-            - (2 * self.MARGIN_X)
-            - self.COLUMN_GAP
-        )
-        column_width = content_width / 2
-
-        content_height = (
-            canvas.height
-            - self.CONTENT_TOP
-            - self.BOTTOM_MARGIN
-        )
-
-        left_x = self.MARGIN_X
-        right_x = (
-            self.MARGIN_X
-            + column_width
-            + self.COLUMN_GAP
-        )
-
-        visual_x = left_x if visual_on_left else right_x
-        body_x = right_x if visual_on_left else left_x
-
-        return [
-            self._build_element(
-                planned=title,
-                position=Position(
-                    x=self.MARGIN_X,
-                    y=self.TOP_MARGIN,
-                ),
-                size=Size(
-                    width=canvas.width - (2 * self.MARGIN_X),
-                    height=self.TITLE_HEIGHT,
-                ),
-                layer=3,
-                scene_plan=scene_plan,
-            ),
-            self._build_element(
-                planned=main_visual,
-                position=Position(
-                    x=visual_x,
-                    y=self.CONTENT_TOP,
-                ),
-                size=Size(
-                    width=column_width,
-                    height=content_height,
-                ),
-                layer=1,
-                scene_plan=scene_plan,
-            ),
-            self._build_element(
-                planned=body,
-                position=Position(
-                    x=body_x,
-                    y=self.CONTENT_TOP,
-                ),
-                size=Size(
-                    width=column_width,
-                    height=content_height,
-                ),
-                layer=2,
-                scene_plan=scene_plan,
-            ),
-        ]
-
-    def _build_element(
-        self,
-        *,
-        planned: PlannedElement,
-        position: Position,
-        size: Size,
-        layer: int,
-        scene_plan: ScenePlan,
-    ) -> ComposedElement:
-        """Combine planner data with calculated geometry."""
-
-        start_time, end_time = self._timing_for_segments(
-            scene_plan=scene_plan,
-            segment_ids=scene_plan.script_segment_ids,
-        )
-
-        return ComposedElement(
-            element_id=planned.element_id,
-            element_type=planned.element_type,
-            role=planned.role,
-            position=position,
-            size=size,
-            layer=layer,
-            text=planned.text,
-            asset_url=planned.asset_url,
-            alt_text=planned.alt_text,
-            script_segment_ids=scene_plan.script_segment_ids,
-            start_time_seconds=start_time,
-            end_time_seconds=end_time,
-        )
-
-    def _require_single_role(
-        self,
-        scene_plan: ScenePlan,
-        role: ElementRole,
-    ) -> PlannedElement:
-        """Return exactly one element with the requested role."""
-
-        matching = [
-            element
-            for element in scene_plan.elements
-            if element.role == role
-        ]
-
-        if len(matching) != 1:
-            raise ValueError(
-                f"Layout '{scene_plan.layout.value}' requires exactly "
-                f"one '{role.value}' element; found {len(matching)}."
-            )
-
-        return matching[0]
-
-    def _optional_single_role(
-        self,
-        scene_plan: ScenePlan,
-        role: ElementRole,
-    ) -> PlannedElement | None:
-        """Return zero or one element with the requested role."""
-
-        matching = [
-            element
-            for element in scene_plan.elements
-            if element.role == role
-        ]
-
-        if len(matching) > 1:
-            raise ValueError(
-                f"Layout '{scene_plan.layout.value}' allows at most one "
-                f"'{role.value}' element; found {len(matching)}."
-            )
-
-        return matching[0] if matching else None
-
-    def _timing_for_segments(
-        self,
-        *,
-        scene_plan: ScenePlan,
-        segment_ids: list[str],
-    ) -> tuple[float | None, float | None]:
-        """Carry optional timing already mapped to script segments."""
-
-        matching = [
-            timing
-            for timing in scene_plan.timing
-            if timing.script_segment_id in segment_ids
-        ]
-
-        starts = [
-            timing.start_time_seconds
-            for timing in matching
-            if timing.start_time_seconds is not None
-        ]
-
-        ends = [
-            timing.end_time_seconds
-            for timing in matching
-            if timing.end_time_seconds is not None
-        ]
-
-        return (
-            min(starts) if starts else None,
-            max(ends) if ends else None,
-        )
-
-    def render_svg(self, scene: ComposedScene) -> str:
-        """Create visible SVG evidence with text wrapping and real images."""
-
-        parts = [
-            (
-                f'<svg xmlns="http://www.w3.org/2000/svg" '
-                f'xmlns:xlink="http://www.w3.org/1999/xlink" '
-                f'width="{scene.canvas.width}" '
-                f'height="{scene.canvas.height}" '
-                f'viewBox="0 0 {scene.canvas.width} {scene.canvas.height}">'
-            ),
-            (
-                f'<rect width="100%" height="100%" '
-                f'fill="{escape(scene.canvas.background_color)}"/>'
-            ),
-        ]
-
-        for element in sorted(
-            scene.elements,
-            key=lambda item: item.layer,
-        ):
-            x = element.position.x
-            y = element.position.y
-            width = element.size.width
-            height = element.size.height
-
-            # Draw the element container.
-            parts.append(
-                (
-                    f'<rect x="{x}" y="{y}" '
-                    f'width="{width}" height="{height}" '
-                    f'fill="#F4F6F8" stroke="#606770" '
-                    f'stroke-width="3" rx="18"/>'
-                )
-            )
-
-            # Render text elements with wrapping and multiline support.
-            if element.element_type == ElementType.TEXT:
-                label = (element.text or "").replace("\\n", "\n")
-
-                font_size = (
-                    58
-                    if element.role == ElementRole.TITLE
-                    else 32
-                )
-
-                text_x = x + 30
-                text_y = y + 55
-                line_height = font_size + 14
-                text_area_bottom = y + height - 25
-
-                max_chars = max(
-                    10,
-                    int((width - 60) / (font_size * 0.55)),
-                )
-
-                parts.append(
-                    (
-                        f'<text font-family="Arial" '
-                        f'font-size="{font_size}" '
-                        f'fill="#111827">'
-                    )
-                )
-
-                current_y = text_y
-
-                for paragraph in label.split("\n"):
-                    wrapped_lines = textwrap.wrap(
-                        paragraph,
-                        width=max_chars,
-                        break_long_words=False,
-                        break_on_hyphens=False,
-                    )
-
-                    if not wrapped_lines:
-                        current_y += line_height
-                        continue
-
-                    for line in wrapped_lines:
-                        if current_y > text_area_bottom:
-                            break
-
-                        parts.append(
-                            (
-                                f'<tspan x="{text_x}" '
-                                f'y="{current_y}">'
-                                f'{escape(line)}'
-                                f'</tspan>'
-                            )
-                        )
-
-                        current_y += line_height
-
-                parts.append("</text>")
-
-            # Render actual image, diagram, icon, or SVG assets.
-            else:
-                asset_href = self._resolve_asset_href(
-                    element.asset_url or ""
-                )
-
-                if asset_href is not None:
-                    safe_href = escape(asset_href, quote=True)
-                    parts.append(
-                        (
-                            f'<image '
-                            f'href="{safe_href}" '
-                            f'xlink:href="{safe_href}" '
-                            f'x="{x + 70}" '
-                            f'y="{y + 70}" '
-                            f'width="{width - 140}" '
-                            f'height="{height - 140}" '
-                            f'preserveAspectRatio="xMidYMid meet"/>'
-                        )
-                    )
-                else:
-                    # Visible fallback when the local asset cannot be found.
-                    fallback = escape(
-                        element.alt_text
-                        or element.asset_url
-                        or "Asset could not be loaded"
-                    )
-                    parts.append(
-                        (
-                            f'<text x="{x + 30}" y="{y + 60}" '
-                            f'font-family="Arial" font-size="28" '
-                            f'fill="#B91C1C">{fallback}</text>'
-                        )
-                    )
-
-        parts.append("</svg>")
-        return "\n".join(parts)
-
-
-    def _resolve_asset_href(self, asset_url: str) -> str | None:
-        """Return a browser-safe asset reference for the SVG preview.
-
-        Remote URLs and existing data URIs are preserved. Local files are
-        embedded as Base64 data URIs so browsers cannot block or lose them.
-        """
-
-        normalized = asset_url.strip()
-        if not normalized:
-            return None
-
-        if normalized.startswith(("http://", "https://", "data:")):
-            return normalized
-
-        if normalized.startswith("file://"):
+    @staticmethod
+    def _validate_alignment(
+        words: dict[str, WordTimestamp], segments: dict[str, SegmentTimestamp]
+    ) -> None:
+        for word in words.values():
             try:
-                local_path = Path(normalized.removeprefix("file:///"))
-            except ValueError:
-                return None
-        else:
-            local_path = Path(normalized)
+                segment = segments[word.segment_id]
+            except KeyError as error:
+                raise ValueError(f"word_id '{word.word_id}' references an unknown segment.") from error
+            if not segment.start <= word.start < word.end <= segment.end:
+                raise ValueError(f"word_id '{word.word_id}' is outside its segment timing.")
 
-        if not local_path.is_absolute():
-            local_path = (Path.cwd() / local_path).resolve()
-
-        if not local_path.exists() or not local_path.is_file():
-            return None
-
-        mime_type, _ = mimetypes.guess_type(local_path.name)
-        mime_type = mime_type or "application/octet-stream"
-        encoded = base64.b64encode(local_path.read_bytes()).decode("ascii")
-
-        return f"data:{mime_type};base64,{encoded}"
-
-    def save_svg(
-        self,
-        scene: ComposedScene,
-        output_path: str | Path,
-    ) -> Path:
-        """Save the generated SVG preview to a file."""
-
-        path = Path(output_path)
-        path.write_text(
-            self.render_svg(scene),
-            encoding="utf-8",
+    def _compose_scene(self, scene, assets, segments, words) -> ComposedScene:
+        scene_timings = self._scene_timings(scene, segments)
+        scene_start = min(timing.start for timing in scene_timings)
+        scene_end = max(timing.end for timing in scene_timings)
+        placements = self._placements(scene)
+        elements = [
+            self._compose_element(scene, cue, position, size, layer, scene_end, assets, segments, words)
+            for cue, position, size, layer in placements
+        ]
+        return ComposedScene(
+            scene_id=scene.scene_id, layout=scene.layout, canvas=self.CANVAS,
+            script_segments=scene.script_segments, start=scene_start, end=scene_end,
+            elements=elements,
         )
 
-        return path
+    @staticmethod
+    def _scene_timings(scene: PlannerScene, segments: dict[str, SegmentTimestamp]) -> list[SegmentTimestamp]:
+        try:
+            return [segments[segment_id] for segment_id in scene.script_segments]
+        except KeyError as error:
+            raise ValueError(f"Missing timing for segment '{error.args[0]}'.") from error
+
+    def _placements(self, scene: PlannerScene) -> list[tuple[VisualElement, Position, Size, int]]:
+        text = [cue for cue in scene.visual_elements if cue.element_type == ElementType.TEXT]
+        visuals = [cue for cue in scene.visual_elements if cue.element_type != ElementType.TEXT]
+        if scene.layout == LayoutName.TITLE_SLIDE:
+            if len(text) != 1 or len(visuals) > 1:
+                raise ValueError("title_slide requires one text cue and at most one visual cue.")
+            placements = [(text[0], Position(x=220, y=120), Size(width=1480, height=180), 2)]
+            if visuals:
+                placements.append((visuals[0], Position(x=460, y=370), Size(width=1000, height=560), 1))
+            return placements
+
+        if len(text) != 1 or len(visuals) != 1:
+            raise ValueError(f"{scene.layout.value} requires one text cue and one visual cue.")
+        width = (self.CANVAS.width - 2 * self.MARGIN_X - self.COLUMN_GAP) / 2
+        height = self.CANVAS.height - self.CONTENT_TOP - self.BOTTOM_MARGIN
+        left = Position(x=self.MARGIN_X, y=self.CONTENT_TOP)
+        right = Position(x=self.MARGIN_X + width + self.COLUMN_GAP, y=self.CONTENT_TOP)
+        visual_position, text_position = (left, right) if scene.layout == LayoutName.IMAGE_LEFT_TEXT_RIGHT else (right, left)
+        size = Size(width=width, height=height)
+        return [(visuals[0], visual_position, size, 1), (text[0], text_position, size, 2)]
+
+    def _compose_element(self, scene, cue, position, size, layer, scene_end, assets, segments, words) -> ComposedElement:
+        start = self._cue_start(cue, segments, words)
+        asset_id = asset_url = None
+        if cue.element_type != ElementType.TEXT:
+            key = (scene.scene_id, cue.cue_id, cue.asset_id)
+            asset = assets.get(key)
+            if asset is None:
+                raise ValueError(f"Missing asset for scene={scene.scene_id}, cue={cue.cue_id}, asset_id={cue.asset_id}.")
+            if asset.type != cue.element_type:
+                raise ValueError(f"Asset '{asset.asset_id}' type does not match cue '{cue.cue_id}'.")
+            asset_id, asset_url = asset.asset_id, asset.url
+        return ComposedElement(
+            cue_id=cue.cue_id, element_type=cue.element_type, content=cue.content,
+            asset_id=asset_id, asset_url=asset_url, position=position, size=size,
+            layer=layer, linked_segment_id=cue.linked_segment_id, start=start, end=scene_end,
+        )
+
+    @staticmethod
+    def _cue_start(cue, segments: dict[str, SegmentTimestamp], words: dict[str, WordTimestamp]) -> float:
+        if cue.appearance_trigger.type == "segment_start":
+            return segments[cue.linked_segment_id].start
+        word_id = cue.appearance_trigger.word_id
+        word = words.get(word_id)
+        if word is None:
+            raise ValueError(f"Missing timing for word_id '{word_id}'.")
+        if word.segment_id != cue.linked_segment_id:
+            raise ValueError(f"word_id '{word_id}' does not belong to segment '{cue.linked_segment_id}'.")
+        return word.start

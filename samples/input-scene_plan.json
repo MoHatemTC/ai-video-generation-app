@@ -1,0 +1,81 @@
+{
+  "video_id": "video_multimedia_001",
+  "scenes": [
+    {
+      "scene_id": "scene_1",
+      "layout": "title_slide",
+      "script_segments": ["seg_1"],
+      "visual_elements": [
+        {
+          "cue_id": "cue_1",
+          "description": "Opening title for the lesson",
+          "element_type": "text",
+          "content": "Introduction to Multimedia Learning",
+          "asset_id": null,
+          "linked_segment_id": "seg_1",
+          "appearance_trigger": { "type": "segment_start", "word_id": null },
+          "preferred_region": "center",
+          "importance": "primary"
+        }
+      ]
+    },
+    {
+      "scene_id": "scene_2",
+      "layout": "image_left_text_right",
+      "script_segments": ["seg_2"],
+      "visual_elements": [
+        {
+          "cue_id": "cue_2",
+          "description": "Illustration of words and visuals together",
+          "element_type": "image",
+          "content": null,
+          "asset_id": "asset_1",
+          "linked_segment_id": "seg_2",
+          "appearance_trigger": { "type": "word", "word_id": "word_5" },
+          "preferred_region": "left",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "cue_3",
+          "description": "Key multimedia learning principles",
+          "element_type": "text",
+          "content": "1. Combine words and visuals\n2. Reduce unnecessary cognitive load\n3. Improve understanding",
+          "asset_id": null,
+          "linked_segment_id": "seg_2",
+          "appearance_trigger": { "type": "segment_start", "word_id": null },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "scene_3",
+      "layout": "text_left_image_right",
+      "script_segments": ["seg_3"],
+      "visual_elements": [
+        {
+          "cue_id": "cue_4",
+          "description": "Learner benefits",
+          "element_type": "text",
+          "content": "Well-designed multimedia helps learners:\n• focus on relevant information\n• connect words with visuals\n• remember concepts more clearly",
+          "asset_id": null,
+          "linked_segment_id": "seg_3",
+          "appearance_trigger": { "type": "segment_start", "word_id": null },
+          "preferred_region": "left",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "cue_5",
+          "description": "Learner studying multimedia content",
+          "element_type": "image",
+          "content": null,
+          "asset_id": "asset_2",
+          "linked_segment_id": "seg_3",
+          "appearance_trigger": { "type": "word", "word_id": "word_12" },
+          "preferred_region": "right",
+          "importance": "primary"
+        }
+      ]
+    }
+  ]
+}

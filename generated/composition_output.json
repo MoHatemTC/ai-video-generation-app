@@ -1,0 +1,144 @@
+{
+  "video_id": "video_multimedia_001",
+  "composed_layout": {
+    "scenes": [
+      {
+        "scene_id": "scene_1",
+        "layout": "title_slide",
+        "canvas": {
+          "width": 1920,
+          "height": 1080,
+          "background_color": "#FFFFFF"
+        },
+        "script_segments": ["seg_1"],
+        "start": 0.0,
+        "end": 4.0,
+        "elements": [
+          {
+            "cue_id": "cue_1",
+            "element_type": "text",
+            "content": "Introduction to Multimedia Learning",
+            "asset_id": null,
+            "asset_url": null,
+            "position": {
+              "x": 220.0,
+              "y": 120.0
+            },
+            "size": {
+              "width": 1480.0,
+              "height": 180.0
+            },
+            "layer": 2,
+            "linked_segment_id": "seg_1",
+            "start": 0.0,
+            "end": 4.0
+          }
+        ]
+      },
+      {
+        "scene_id": "scene_2",
+        "layout": "image_left_text_right",
+        "canvas": {
+          "width": 1920,
+          "height": 1080,
+          "background_color": "#FFFFFF"
+        },
+        "script_segments": ["seg_2"],
+        "start": 4.0,
+        "end": 12.0,
+        "elements": [
+          {
+            "cue_id": "cue_2",
+            "element_type": "image",
+            "content": null,
+            "asset_id": "asset_1",
+            "asset_url": "sample_inputs/placeholder.svg",
+            "position": {
+              "x": 120.0,
+              "y": 250.0
+            },
+            "size": {
+              "width": 790.0,
+              "height": 740.0
+            },
+            "layer": 1,
+            "linked_segment_id": "seg_2",
+            "start": 4.8,
+            "end": 12.0
+          },
+          {
+            "cue_id": "cue_3",
+            "element_type": "text",
+            "content": "1. Combine words and visuals\n2. Reduce unnecessary cognitive load\n3. Improve understanding",
+            "asset_id": null,
+            "asset_url": null,
+            "position": {
+              "x": 1010.0,
+              "y": 250.0
+            },
+            "size": {
+              "width": 790.0,
+              "height": 740.0
+            },
+            "layer": 2,
+            "linked_segment_id": "seg_2",
+            "start": 4.0,
+            "end": 12.0
+          }
+        ]
+      },
+      {
+        "scene_id": "scene_3",
+        "layout": "text_left_image_right",
+        "canvas": {
+          "width": 1920,
+          "height": 1080,
+          "background_color": "#FFFFFF"
+        },
+        "script_segments": ["seg_3"],
+        "start": 12.0,
+        "end": 21.0,
+        "elements": [
+          {
+            "cue_id": "cue_5",
+            "element_type": "image",
+            "content": null,
+            "asset_id": "asset_2",
+            "asset_url": "sample_inputs/placeholder.svg",
+            "position": {
+              "x": 1010.0,
+              "y": 250.0
+            },
+            "size": {
+              "width": 790.0,
+              "height": 740.0
+            },
+            "layer": 1,
+            "linked_segment_id": "seg_3",
+            "start": 13.2,
+            "end": 21.0
+          },
+          {
+            "cue_id": "cue_4",
+            "element_type": "text",
+            "content": "Well-designed multimedia helps learners:\n\u2022 focus on relevant information\n\u2022 connect words with visuals\n\u2022 remember concepts more clearly",
+            "asset_id": null,
+            "asset_url": null,
+            "position": {
+              "x": 120.0,
+              "y": 250.0
+            },
+            "size": {
+              "width": 790.0,
+              "height": 740.0
+            },
+            "layer": 2,
+            "linked_segment_id": "seg_3",
+            "start": 12.0,
+            "end": 21.0
+          }
+        ]
+      }
+    ]
+  }
+}

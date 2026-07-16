@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1920" height="1080" viewBox="0 0 1920 1080">
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g>
+<rect x="1010.0" y="250.0" width="790.0" height="740.0" fill="#F4F6F8" stroke="#606770" stroke-width="3" rx="18"/>
+<text x="1045.0" y="320.0" font-family="Arial, sans-serif" font-size="28" fill="#374151">sample_inputs/placeholder.svg</text>
+<text x="1045.0" y="365.0" font-family="Arial, sans-serif" font-size="22" fill="#6B7280">image</text>
+</g>
+<g>
+<rect x="120.0" y="250.0" width="790.0" height="740.0" fill="#F4F6F8" stroke="#606770" stroke-width="3" rx="18"/>
+<text font-family="Arial, sans-serif" font-size="34" fill="#111827">
+<tspan x="150.0" y="310.0">Well-designed multimedia helps</tspan>
+<tspan x="150.0" y="358.0">learners:</tspan>
+<tspan x="150.0" y="406.0">• focus on relevant information</tspan>
+<tspan x="150.0" y="454.0">• connect words with visuals</tspan>
+<tspan x="150.0" y="502.0">• remember concepts more clearly</tspan>
+</text>
+</g>
+</svg>
