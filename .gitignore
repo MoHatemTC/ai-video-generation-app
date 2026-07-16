@@ -44,3 +44,8 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+generated/
+.pytest_cache/
+composition_preview1.svg
+RAG-IMAGE.jpg
