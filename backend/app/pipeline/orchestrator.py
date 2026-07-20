@@ -1,21 +1,22 @@
+import os
 import asyncio
 import logging
 from supabase import Client
 
+from backend.app.services.script_agent import generate_script
+from backend.app.schemas.script import VideoScriptBlueprint
+from backend.app.services.tts_provider import MockTTSProvider  # Mahdy's function
+from backend.app.services.alignment import AlignmentService   # Osama's class 
+from backend.app.schemas.timestamps import AudioTrack         # Osama's required audio schema
+
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # --- Dummy AI Contract Functions (No CrewAI dependencies here!) ---
-def run_transcript_crew_sync(prompt: str) -> dict:
-    return {"title": "Generated Topic", "segments": [{"id": "seg_1", "text": prompt, "visual_cue": "Intro"}]}
 
 def run_planner_crew_sync(script_data: dict) -> dict:
     return {"schema_version": "1.0", "scenes": [{"scene_id": "scene_1"}]}
-
-def run_voiceover_crew_sync(script_data: dict) -> dict:
-    return {"audio_path": "/tmp/audio.wav"}
-
-def run_alignment_crew_sync(audio_data: dict, script_data: dict) -> dict:
-    return {"word_timestamps": []}
 
 def run_asset_crew_sync(scene_data: dict) -> dict:
     return {"assets": []}
@@ -41,30 +42,79 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
     try:
         logger.info(f"Starting pipeline for Job: {job_id}")
 
-        # STAGE 1: Transcript 
-        current_stage = "transcript"
+        # =====================================================================================
+        # STAGE 1: Script Generation
+        current_stage = "script_generation"
         supabase.table("videos").update({"status": "generating_script"}).eq("id", job_id).execute()
-        script_data = await asyncio.to_thread(run_transcript_crew_sync, prompt)
-        supabase.table("videos").update({"script_data": script_data}).eq("id", job_id).execute()
+        
+        logger.info(f"[{job_id}] Running Stage 1: Script Agent...")
+        # Call the LiteLLM agent you just built
+        script_data: VideoScriptBlueprint = await generate_script(prompt)
+        
+        # Save the validated JSON output directly into the Supabase JSONB column
+        supabase.table("videos").update({"script_data": script_data.model_dump()}).eq("id", job_id).execute()
+        logger.info(f"[{job_id}] Stage 1 Complete!")
 
+        # =====================================================================================
         # STAGE 2: Planner 
         current_stage = "planner"
         supabase.table("videos").update({"status": "planning_scenes"}).eq("id", job_id).execute()
         scene_data = await asyncio.to_thread(run_planner_crew_sync, script_data)
         supabase.table("videos").update({"scene_data": scene_data}).eq("id", job_id).execute()
 
-        # STAGE 3: Voiceover
+        # =====================================================================================
+        # STAGE 3: Voiceover (TTS)
         current_stage = "voiceover"
         supabase.table("videos").update({"status": "generating_audio"}).eq("id", job_id).execute()
-        audio_data = await asyncio.to_thread(run_voiceover_crew_sync, script_data)
+        
+        logger.info(f"[{job_id}] Running Stage 3: Mock Audio Generation...")
+        
+        script_dict = script_data.model_dump()
+        full_text = " ".join([seg["narrator_text"] for seg in script_dict["segments"]])
+        
+        # Use Mahdy's Mock Provider so we don't need a Gemini API Key!
+        tts_provider = MockTTSProvider()
+        audio_bytes = await tts_provider.generate_speech(text=full_text)
+        
+        audio_path = os.path.join(os.getcwd(), "data", f"{job_id}.wav")
+        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+        
+        with open(audio_path, "wb") as f:
+            f.write(audio_bytes)
+            
+        audio_data = {"audio_path": audio_path}
         supabase.table("videos").update({"audio_metadata": audio_data}).eq("id", job_id).execute()
+        logger.info(f"[{job_id}] Stage 3 Complete! Mock audio saved to {audio_path}")
 
-        # STAGE 4: Alignment 
+        # =====================================================================================
+        # STAGE 4: Alignment (WhisperX)
         current_stage = "alignment"
         supabase.table("videos").update({"status": "aligning_timestamps"}).eq("id", job_id).execute()
-        timestamp_data = await asyncio.to_thread(run_alignment_crew_sync, audio_data, script_data)
-        supabase.table("videos").update({"timestamp_data": timestamp_data}).eq("id", job_id).execute()
+        
+        logger.info(f"[{job_id}] Running Stage 4: WhisperX Alignment...")
+        aligner = AlignmentService()
+        
+        # 1. Create the AudioTrack object that Osama's code strictly requires
+        audio_track = AudioTrack(
+            audio_id=job_id,
+            audio_path=audio_path,
+            language="en"
+        )
+        
+        # 2. Pass the script, the AudioTrack object, and the job_id exactly as Osama defined it
+        timestamp_data = await asyncio.to_thread(
+            aligner.align, 
+            script=script_data, 
+            audio_track=audio_track, 
+            video_id=job_id
+        )
+        
+        # Save the returned timestamps to the database
+        timestamp_dict = timestamp_data.model_dump() if hasattr(timestamp_data, 'model_dump') else timestamp_data
+        supabase.table("videos").update({"timestamp_data": timestamp_dict}).eq("id", job_id).execute()
+        logger.info(f"[{job_id}] Stage 4 Complete!")
 
+        # =====================================================================================
         # STAGE 5: Assets
         current_stage = "assets"
         supabase.table("videos").update({"status": "fetching_assets"}).eq("id", job_id).execute()
@@ -96,7 +146,7 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         logger.info(f"Job {job_id} successfully completed!")
 
     except Exception as e:
-        # THE FIX: We inject the current_stage into the error message!
+        # We inject the current_stage into the error message!
         error_message = f"[{current_stage}] {str(e)}"
         
         logger.error(f"Pipeline Failed for Job {job_id}: {error_message}")
