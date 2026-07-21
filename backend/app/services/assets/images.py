@@ -6,7 +6,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from crewai import Agent, Task, Crew
-from schemas.asset import AssetItem
+from backend.app.schemas.asset import AssetItem
 
 # Pydantic V2 Migration warnings are expected from CrewAI and can be ignored for now.
 # The UserWarning about 'model_name' is also from a dependency and not a blocker.
