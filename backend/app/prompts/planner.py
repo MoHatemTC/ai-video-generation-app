@@ -91,35 +91,37 @@ Your responsibility is to **update the Scene Plan** by applying **only** these i
 """.strip()
 
 # Director / quality checker prompt
+# ... existing prompts ...
+
 DIRECTOR_TASK_TEMPLATE = """
 You are given:
 - Original Script: {script}
 - Generated Scene Plan: {scene_plan}
 
-Evaluate the Scene Plan using the predefined quality rubric.
+Analyze the Scene Plan and identify any issues that could affect educational quality.
 
-Quality Criteria:
-- Script Coverage
-- Scene Structure
-- Layout Selection
-- Visual Relevance
-- Educational Effectiveness
-- Consistency
-- Schema Validity
+For each issue:
+- Provide a clear description.
+- Assign a severity: critical, major, or minor.
+- Suggest a concrete revision instruction (target_path, operation, new_value).
 
-For every issue:
-- Assign a severity level.
-- Identify the affected field using target_path.
-- Suggest the minimal modification required.
-- Never modify correct fields.
-- Never regenerate the entire Scene Plan.
+Also list the strengths of the plan.
 
-Generate:
-- Category scores.
-- Overall score.
-- Strengths.
-- Detected issues.
-- Machine‑readable revision instructions.
-
-Return only valid JSON matching the SceneQualityReport schema.
+Return ONLY a JSON object with the following structure:
+{{
+  "strengths": ["list of strengths"],
+  "revision_instructions": [
+    {{
+      "instruction_id": "unique_id",
+      "severity": "critical|major|minor",
+      "issue_type": "one_of: missing_scene, missing_segment, layout_issue, visual_issue, consistency_issue, schema_issue, educational_issue",
+      "target_path": "JSON path",
+      "operation": "replace|add|remove",
+      "new_value": null or value,
+      "reason": "why this is an issue",
+      "recommendation": "what to do"
+    }}
+  ]
+}}
+Do NOT include scores or category scores – these will be computed automatically.
 """.strip()
