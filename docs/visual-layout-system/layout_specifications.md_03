@@ -1,0 +1,111 @@
+# Layout Specifications
+
+## Canvas
+
+- 1920×1080
+- Safe area: keep ~5% margin from each edge
+- 8px spacing grid, 16px corner radius on cards (standard practice — not from the brand doc,
+  should be confirmed once we have it)
+
+## Colors (placeholders — need real hex values from the brand guideline doc)
+
+| Mode | Background | Text |
+|---|---|---|
+| Light | off-white, slightly cool tint | dark navy |
+| Dark | near-black | off-white |
+| Bright/minimal | white | dark navy |
+
+## Typography
+
+| Role | Size | Weight | Max lines |
+|---|---|---|---|
+| Title | 64px | Bold | 1 |
+| Body | 40px | Regular | 3 |
+| Caption | 28px | Regular | 2 |
+| Takeaway text | 56px | Bold | 2 |
+
+Font family isn't specified anywhere in what we have — using a plain geometric sans (Inter or
+Poppins) as a placeholder until the brand typeface is confirmed.
+
+## Pacing
+
+- Minimum scene hold time: 4s
+- Typical: 15-35s
+- Max: 45s (past that, split into more scenes)
+- Max ~4 bullet points or ~40 words per scene
+
+## Transitions
+
+Cross-fade, 400-600ms, between all scene types. Nothing fancier for v1 — the reference video
+doesn't use hard cuts.
+
+## What happens when content is missing or too long
+
+| Situation | What happens |
+|---|---|
+| Required field missing | Show a placeholder, log a warning, never fail the render |
+| Text too long | Cut at the nearest word boundary, add "…", log a warning |
+| Media missing / broken link | Fall back to a text-only version of that scene |
+| Unknown layout name from Scene Planner | Default to `text_explanation` |
+| No visual elements at all | Just show title/body centered, no media area |
+
+## Per-layout specs
+
+### `title_intro`
+- Mode: Light
+- Required: `title` (1 line)
+- Optional: `subtitle`, `background_media`
+- Placement: title centered, subtitle right below it
+- Hold time: 4-8s
+
+### `narrator_note`
+- Mode: Dark
+- Required: `statement_text` (max 2 lines)
+- Optional: `avatar_icon` (generic icon, not a photo), `attribution_label`
+- Placement: statement centered, icon top-left if present, label under the statement
+- Hold time: 8-15s
+
+### `text_explanation`
+- Mode: Light
+- Required: `body_text` (max 3 lines, ~40 words)
+- Optional: `heading`, small `supporting_icon`
+- Placement: heading on top, body centered-left, icon on the right
+- Hold time: 15-35s — this is the most-used layout
+
+### `image_media`
+- Mode: Dark
+- Required: `media_asset`
+- Optional: `caption`, `heading`
+- Placement: media takes ~70% of the width, centered, caption below it
+- Hold time: 15-35s
+- If media is missing → falls back to text-only, per the table above
+
+### `comparison`
+- Mode: Light
+- Required: `left_item` {label, points (max 3)}, `right_item` {label, points (max 3)}
+- Optional: `heading`
+- Placement: two columns, labels on top, bullets below
+- Hold time: 20-40s
+
+### `step_by_step`
+- Mode: Light
+- Required: `steps[]` (2-5 items, each with a label + short line of text)
+- Optional: `heading`
+- Placement: numbered vertical list
+- If there are more than 5 steps, split into multiple scenes instead of cutting steps out —
+  losing a step changes the meaning, so truncating isn't safe here
+- Hold time: ~4-8s per step
+
+### `key_takeaway`
+- Mode: Bright
+- Required: `takeaway_text` (max 2 lines)
+- No optional fields — kept minimal on purpose
+- Placement: centered, generous whitespace around it
+- Hold time: 8-15s
+
+### `closing_cta`
+- Mode: Dark
+- Required: `closing_message`
+- Optional: `cta_text`, `logo`
+- Placement: message centered in the top half, CTA below it, logo at the bottom
+- Hold time: 6-10s
