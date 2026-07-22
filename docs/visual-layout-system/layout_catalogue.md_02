@@ -1,0 +1,34 @@
+# Layout Catalogue
+
+8 reusable layouts, built to work for any topic — not just LangChain — since these videos will
+cover different subjects each time.
+
+| ID | Name | Mode | Used for |
+|---|---|---|---|
+| `title_intro` | Title & Intro | Light | Opener: topic + short hook line |
+| `narrator_note` | Narrator Attribution | Dark | A quote/statement, no real presenter video |
+| `text_explanation` | Text & Explanation | Light | Main narration / concept explanation |
+| `image_media` | Image & Media | Dark | Diagram, screenshot, or code snippet |
+| `comparison` | Comparison | Light | Two things side by side |
+| `step_by_step` | Step-by-Step | Light | A process or sequence |
+| `key_takeaway` | Key Takeaway | Bright | One short, reinforced message |
+| `closing_cta` | Closing / CTA | Dark | Wrap-up + next step |
+
+## About the "presenter" layout
+
+The task brief asks for a presenter-focused layout, but per the PRD a presenter face isn't
+part of v1. So `narrator_note` isn't a person on screen — it's a statement/quote card, maybe
+with a small generic icon next to it, not a photo or video of anyone. This covers the same
+purpose (attributing a line to a voice/perspective) without needing real presenter footage. If
+that changes later, this layout can just get a video field added on top.
+
+## Why only 8 layouts
+
+Keeping the set small on purpose. Visual variety across different videos should come from the
+content — different text, different images — not from making a new layout for every topic.
+That keeps things consistent and also easier to actually build and maintain.
+
+## How a layout gets picked
+
+The Scene Planner sends a `layout` field (a string) per scene. See
+`04_scene_planner_mapping.md` for exactly how that gets resolved and filled in.
