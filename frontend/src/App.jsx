@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Loader2, CheckCircle2, AlertCircle, Terminal, ChevronDown, ChevronUp, Sparkles, Download, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2, CheckCircle2, AlertCircle, Terminal, ChevronDown, ChevronUp, Sparkles, Download, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const PIPELINE_STAGES = [
   { id: 'generating_script', label: 'Script Generation (Ahmed)', dataKey: 'script_data' },
@@ -12,18 +12,20 @@ const PIPELINE_STAGES = [
   { id: 'completed', label: 'Video Ready', dataKey: null }
 ];
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:8000';
 
 export default function App() {
   const [prompt, setPrompt] = useState('explain LangChain');
   const [jobId, setJobId] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('idle');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   
   const [stageData, setStageData] = useState({});
   const [expandedStages, setExpandedStages] = useState({});
+  const [completedStages, setCompletedStages] = useState(new Set());
   
   const fetchedKeys = useRef(new Set());
 
@@ -48,10 +50,9 @@ export default function App() {
         } else if (data.status === 'completed') {
           setProgress(100);
         } else if (data.status === 'failed') {
-          setProgress(67); // Shows progress up to the failure point
+          setProgress(67);
         }
 
-        // Fetch data for all completed stages (even if job failed later)
         const isFinishedOrFailed = data.status === 'completed' || data.status === 'failed';
         const stagesToFetch = PIPELINE_STAGES.filter((stage, idx) => 
           stage.dataKey && !fetchedKeys.current.has(stage.dataKey) && (
@@ -64,9 +65,11 @@ export default function App() {
             const dataRes = await fetch(`${API_BASE_URL}/api/data/${jobId}/${stage.dataKey}`);
             if (dataRes.ok) {
               const stageJson = await dataRes.json();
-              if (stageJson[stage.dataKey]) {
-                setStageData(prev => ({...prev, [stage.dataKey]: stageJson[stage.dataKey]}));
+              if (stageJson[stage.dataKey] !== undefined && stageJson[stage.dataKey] !== null) {
+                const payload = stageJson[stage.dataKey];
+                setStageData(prev => ({...prev, [stage.dataKey]: payload}));
                 fetchedKeys.current.add(stage.dataKey);
+                setCompletedStages(prev => new Set(prev).add(stage.dataKey));
               }
             }
           } catch (e) {
@@ -91,12 +94,14 @@ export default function App() {
 
   const handleGenerate = async (e) => {
     e.preventDefault();
-    if (!prompt.trim()) return;
+    if (!prompt || !prompt.trim() || isSubmitting || jobId !== null) return;
 
+    setIsSubmitting(true);
     setJobId(null);
     setVideoUrl(null);
     setErrorMsg(null);
     setStageData({});
+    setCompletedStages(new Set());
     fetchedKeys.current.clear();
     setCurrentStatus('pending');
     setProgress(5);
@@ -105,7 +110,7 @@ export default function App() {
       const res = await fetch(`${API_BASE_URL}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt: prompt.trim() })
       });
 
       if (!res.ok) throw new Error('Failed to start video generation job');
@@ -116,6 +121,8 @@ export default function App() {
     } catch (err) {
       setErrorMsg(err.message);
       setCurrentStatus('failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -125,12 +132,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FBFBFD] text-[#0F172B] font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* Navbar matching Sprints brand */}
       <header className="bg-[#FBFBFC] fixed top-0 z-50 max-h-20 w-full border-b border-gray-100 shadow-sm">
         <nav className="flex items-center justify-between mx-auto max-w-7xl px-4 sm:px-8 h-20">
           <div className="flex items-center gap-2">
             <a href="/" className="block">
-              <img src="https://sprintscdn-fnh2cugtb8a4deba.z02.azurefd.net/production/files/17845432766a5df82c15dcd.svg" className="w-30 h-8" alt="Sprints Logo" />
+              <img src="https://sprintscdn-fnh2cugtb8a4deba.z02.azurefd.net/production/files/17845432766a5df82c15dcd.svg" className="w-32 h-8" alt="Sprints Logo" />
             </a>
           </div>
           <div className="hidden lg:flex items-center gap-8 text-sm text-gray-700 font-medium">
@@ -146,9 +152,7 @@ export default function App() {
         </nav>
       </header>
 
-      {/* Main content wrapper */}
       <main className="pt-28 pb-16 px-4 max-w-5xl mx-auto">
-        {/* Hero input box */}
         <div className="text-center mb-10">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-4 border border-blue-100">
             <Sparkles className="w-3.5 h-3.5" /> AI Micro-Agent Orchestrator
@@ -170,10 +174,10 @@ export default function App() {
             />
             <button
               type="submit"
-              disabled={currentStatus !== 'idle' && currentStatus !== 'completed' && currentStatus !== 'failed' && jobId !== null}
+              disabled={isSubmitting || (currentStatus !== 'idle' && currentStatus !== 'completed' && currentStatus !== 'failed' && jobId !== null)}
               className="w-full sm:w-auto bg-[#004EFF] hover:bg-blue-700 text-white font-semibold px-8 py-3.5 rounded-xl whitespace-nowrap shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
-              {currentStatus !== 'idle' && currentStatus !== 'completed' && currentStatus !== 'failed' && jobId !== null ? (
+              {isSubmitting || (currentStatus !== 'idle' && currentStatus !== 'completed' && currentStatus !== 'failed' && jobId !== null) ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" /> Generating...
                 </>
@@ -186,7 +190,6 @@ export default function App() {
           </form>
         </div>
 
-        {/* Error banner */}
         {errorMsg && (
           <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-4 text-red-800 shadow-sm">
             <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5 text-red-600" />
@@ -197,7 +200,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Progress & Live Data Section */}
         {jobId && (
           <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-xl border border-gray-100 mb-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -210,7 +212,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Progress Bar */}
             <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden mb-8">
               <div 
                 className="bg-gradient-to-r from-blue-600 to-teal-400 h-full transition-all duration-500 rounded-full"
@@ -218,13 +219,12 @@ export default function App() {
               ></div>
             </div>
 
-            {/* Live Stages & JSON Terminal Feed */}
             <div className="space-y-3">
               <h4 className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-4">Pipeline Execution Log & State Data</h4>
               {PIPELINE_STAGES.map((stage, idx) => {
-                const isCompleted = fetchedKeys.current.has(stage.dataKey) || currentStatus === 'completed' || (stage.dataKey && stageData[stage.dataKey]);
+                const isCompleted = completedStages.has(stage.dataKey) || currentStatus === 'completed' || (stage.dataKey && stageData[stage.dataKey] !== undefined && stageData[stage.dataKey] !== null);
                 const isCurrent = currentStatus === stage.id || (idx === 0 && currentStatus === 'pending');
-                const hasData = stage.dataKey && stageData[stage.dataKey];
+                const hasData = stage.dataKey && stageData[stage.dataKey] !== undefined && stageData[stage.dataKey] !== null;
                 const isExpanded = expandedStages[stage.dataKey];
 
                 return (
@@ -255,7 +255,6 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* JSON Hacker Terminal Dropdown */}
                     {hasData && isExpanded && (
                       <div className="mt-4 bg-[#0F172B] text-teal-300 p-4 rounded-xl font-mono text-xs overflow-x-auto shadow-inner border border-slate-800">
                         <pre>{JSON.stringify(stageData[stage.dataKey], null, 2)}</pre>
@@ -266,13 +265,12 @@ export default function App() {
               })}
             </div>
 
-            {/* Final Video Render & Download */}
             {videoUrl && (
               <div className="mt-10 p-6 bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-200 text-center">
                 <h3 className="text-2xl font-extrabold text-gray-900 mb-2 flex items-center justify-center gap-2">
                   <ShieldCheck className="w-6 h-6 text-blue-600" /> Video Render Complete!
                 </h3>
-                <p className="test-gray-600 text-sm mb-6">Your AI-generated course has been successfully stitched and rendered.</p>
+                <p className="text-gray-600 text-sm mb-6">Your AI-generated course has been successfully stitched and rendered.</p>
                 
                 <div className="aspect-video max-w-2xl mx-auto rounded-xl overflow-hidden shadow-2xl bg-black mb-6">
                   <video src={videoUrl} controls className="w-full h-full object-cover" />
