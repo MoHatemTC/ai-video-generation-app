@@ -44,3 +44,6 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Demo scripts
+run_asset_pipeline.py

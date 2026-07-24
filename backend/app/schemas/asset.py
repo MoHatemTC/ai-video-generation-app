@@ -49,6 +49,18 @@ class AssetItem(BaseModel):
         None, 
         description="Preserved raw textual cue for verification"
     )
+    prompt_used: Optional[str] = Field(
+        None,
+        description="The exact prompt string submitted to the generation model."
+    )
+    resolution: Optional[str] = Field(
+        None,
+        description="The resolution of the asset (e.g., '1920x1080')."
+    )
+    aspect_ratio: Optional[str] = Field(
+        None,
+        description="The aspect ratio of the asset (e.g., '16:9')."
+    )
 
 
 class AssetResponseContract(BaseModel):
