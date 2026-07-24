@@ -1,0 +1,261 @@
+{
+  "schema_version": "1.0",
+  "video_id": "langchain-explainer-001",
+  "title": "What is LangChain?",
+  "total_duration_seconds": 57.0,
+  "scenes": [
+    {
+      "scene_id": "0",
+      "text": "What is LangChain? Let's find out how to build powerful AI applications.",
+      "subtitle": "What is LangChain? Build powerful AI applications with LLMs.",
+      "hold_ms": 7000,
+      "script_segment_ids": ["seg-lc-0"],
+      "layout_hint": "title-card",
+      "visual_cues": [
+        {
+          "cue_id": "c0-logo",
+          "description": "LangChain logo",
+          "element_type": "icon",
+          "asset_id": "asset-langchain-logo",
+          "linked_segment_id": "seg-lc-0",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "top",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c0-title",
+          "description": "Title text",
+          "element_type": "text",
+          "content": "What is LangChain?",
+          "linked_segment_id": "seg-lc-0",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "center",
+          "importance": "primary"
+        }
+      ]
+    },
+    {
+      "scene_id": "1",
+      "text": "Standalone LLMs are powerful, but they lack real-time data, memory of past chats, and the ability to run external tools.",
+      "subtitle": "Standalone LLMs lack real-time data, memory, and external tool integration.",
+      "hold_ms": 10000,
+      "script_segment_ids": ["seg-lc-1"],
+      "layout_hint": "risk-diagram",
+      "visual_cues": [
+        {
+          "cue_id": "c1-device",
+          "description": "User Prompt & LLM",
+          "element_type": "diagram",
+          "asset_id": "asset-llm-icon",
+          "linked_segment_id": "seg-lc-1",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c1-beams",
+          "description": "Disconnected capability paths",
+          "element_type": "svg",
+          "asset_id": "asset-risk-beams",
+          "linked_segment_id": "seg-lc-1",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "center",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c1-nodata",
+          "description": "No Live Data limitation",
+          "element_type": "icon",
+          "asset_id": "asset-no-data-icon",
+          "linked_segment_id": "seg-lc-1",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-12" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c1-nomemory",
+          "description": "No Memory limitation",
+          "element_type": "icon",
+          "asset_id": "asset-no-memory-icon",
+          "linked_segment_id": "seg-lc-1",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-15" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c1-noactions",
+          "description": "No Tools limitation",
+          "element_type": "icon",
+          "asset_id": "asset-no-tools-icon",
+          "linked_segment_id": "seg-lc-1",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-18" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "2",
+      "text": "LangChain is an open-source framework that connects language models to custom data sources, APIs, and computation tools.",
+      "subtitle": "LangChain bridges LLMs with custom data sources, APIs, and external tools.",
+      "hold_ms": 10000,
+      "script_segment_ids": ["seg-lc-2"],
+      "layout_hint": "tunnel-diagram",
+      "visual_cues": [
+        {
+          "cue_id": "c2-device",
+          "description": "User Application",
+          "element_type": "diagram",
+          "asset_id": "asset-app-icon",
+          "linked_segment_id": "seg-lc-2",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c2-tunnel",
+          "description": "LangChain Chain Tunnel",
+          "element_type": "svg",
+          "asset_id": "asset-langchain-tunnel",
+          "linked_segment_id": "seg-lc-2",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "center",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c2-server",
+          "description": "LLM & Knowledge Base",
+          "element_type": "diagram",
+          "asset_id": "asset-llm-server",
+          "linked_segment_id": "seg-lc-2",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "3",
+      "text": "It works by chaining together Prompts, Models, Memory, and Vector Indexes into seamless automated pipelines.",
+      "subtitle": "Chains combine Prompts, Models, Memory, and Vector Stores into pipelines.",
+      "hold_ms": 11000,
+      "script_segment_ids": ["seg-lc-3"],
+      "layout_hint": "flow-diagram",
+      "visual_cues": [
+        {
+          "cue_id": "c3-node1",
+          "description": "User Prompt Node",
+          "element_type": "diagram",
+          "asset_id": "asset-prompt-node",
+          "linked_segment_id": "seg-lc-3",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c3-node2",
+          "description": "LangChain Engine Node",
+          "element_type": "diagram",
+          "asset_id": "asset-langchain-engine",
+          "linked_segment_id": "seg-lc-3",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-35" },
+          "preferred_region": "center",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c3-node3",
+          "description": "Vector DB & LLM Node",
+          "element_type": "diagram",
+          "asset_id": "asset-vectordb-node",
+          "linked_segment_id": "seg-lc-3",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-42" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "4",
+      "text": "With LangChain, you can build custom RAG chatbots, automated document search engines, and autonomous AI agents.",
+      "subtitle": "Build custom RAG Chatbots, Document Search, and autonomous AI Agents.",
+      "hold_ms": 11000,
+      "script_segment_ids": ["seg-lc-4"],
+      "layout_hint": "cards",
+      "visual_cues": [
+        {
+          "cue_id": "c4-card1",
+          "description": "RAG Chatbots Card",
+          "element_type": "icon",
+          "content": "RAG Chatbots",
+          "asset_id": "asset-card-rag",
+          "linked_segment_id": "seg-lc-4",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c4-card2",
+          "description": "AI Agents Card",
+          "element_type": "icon",
+          "content": "AI Agents",
+          "asset_id": "asset-card-agents",
+          "linked_segment_id": "seg-lc-4",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-51" },
+          "preferred_region": "center",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c4-card3",
+          "description": "Doc Search Card",
+          "element_type": "icon",
+          "content": "Doc Search",
+          "asset_id": "asset-card-docsearch",
+          "linked_segment_id": "seg-lc-4",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-58" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "5",
+      "text": "In short, LangChain turns simple language models into intelligent, action-oriented AI applications.",
+      "subtitle": "In short — LangChain turns raw LLMs into powerful, action-driven AI apps.",
+      "hold_ms": 8000,
+      "script_segment_ids": ["seg-lc-5"],
+      "layout_hint": "outro-checklist",
+      "visual_cues": [
+        {
+          "cue_id": "c5-check1",
+          "description": "Connect Custom Data",
+          "element_type": "text",
+          "content": "Connect Custom Data",
+          "linked_segment_id": "seg-lc-5",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "top",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c5-check2",
+          "description": "Add Persistent Memory",
+          "element_type": "text",
+          "content": "Add Persistent Memory",
+          "linked_segment_id": "seg-lc-5",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-65" },
+          "preferred_region": "center",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c5-check3",
+          "description": "Execute Autonomous Actions",
+          "element_type": "text",
+          "content": "Execute Autonomous Actions",
+          "linked_segment_id": "seg-lc-5",
+          "appearance_trigger": { "type": "word", "word_id": "w-lc-69" },
+          "preferred_region": "bottom",
+          "importance": "primary"
+        }
+      ]
+    }
+  ]
+}
