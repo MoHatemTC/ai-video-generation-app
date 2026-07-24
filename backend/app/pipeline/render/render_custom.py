@@ -26,11 +26,11 @@ if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
 from backend.app.schemas.scene import ScenePlan
-from backend.app.pipeline.render.agent_template_generator.crew_agent import (
+from backend.app.pipeline.render.crew_agent import (
     generate_template_with_crewai,
 )
 
-from backend.app.pipeline.render.agent_template_generator.asset_agent import (
+from backend.app.pipeline.render.asset_agent import (
     generate_assets_with_crewai,
 )
 
