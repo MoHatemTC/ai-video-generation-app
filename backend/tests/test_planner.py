@@ -2,7 +2,7 @@
 import pytest
 import json
 from unittest.mock import patch, MagicMock
-
+import os
 from app.agents.planner import ScenePlanner
 from app.schemas.scene import ScenePlan, Scene, VisualCue, AppearanceTrigger
 
