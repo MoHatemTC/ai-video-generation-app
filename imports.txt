@@ -1,0 +1,138 @@
+backend\app\agents\director.py:1:import os
+backend\app\agents\director.py:2:import json
+backend\app\agents\director.py:3:import logging
+backend\app\agents\director.py:4:from typing import Dict, Any, Optional
+backend\app\agents\director.py:6:from crewai import Agent, Task, Crew, LLM
+backend\app\agents\director.py:7:import litellm
+backend\app\agents\director.py:9:from ..schemas.scene import ScenePlan, SceneQualityReport, CategoryScores
+backend\app\agents\director.py:10:from ..config.quality import QualityRubric
+backend\app\agents\director.py:11:from ..validators import validate_scene_plan
+backend\app\agents\director.py:12:from ..prompts.planner import SYSTEM_PROMPT, DIRECTOR_TASK_TEMPLATE, RETRY_PROMPT
+backend\app\agents\planner.py:1:import os
+backend\app\agents\planner.py:2:import json
+backend\app\agents\planner.py:3:import logging
+backend\app\agents\planner.py:4:from typing import Dict, Any, Optional
+backend\app\agents\planner.py:6:from crewai import Agent, Task, Crew, LLM
+backend\app\agents\planner.py:7:import litellm
+backend\app\agents\planner.py:9:from ..schemas.scene import ScenePlan, SceneQualityReport
+backend\app\agents\planner.py:10:from ..prompts.planner import (
+backend\app\config\quality.py:1:from dataclasses import dataclass
+backend\app\config\quality.py:2:from typing import List
+backend\app\pipeline\orchestrator.py:1:import os
+backend\app\pipeline\orchestrator.py:2:import asyncio
+backend\app\pipeline\orchestrator.py:3:import logging
+backend\app\pipeline\orchestrator.py:4:from supabase import Client
+backend\app\pipeline\orchestrator.py:7:from backend.app.services.script_agent import generate_script
+backend\app\pipeline\orchestrator.py:8:from backend.app.schemas.script import VideoScriptBlueprint
+backend\app\pipeline\orchestrator.py:9:from backend.app.services.tts_provider import MockTTSProvider
+backend\app\pipeline\orchestrator.py:10:from backend.app.services.alignment import AlignmentService
+backend\app\pipeline\orchestrator.py:11:from backend.app.schemas.timestamps import AudioTrack
+backend\app\pipeline\orchestrator.py:14:from backend.app.services.assets.images import process_scene_elements
+backend\app\schemas\asset.py:1:from pydantic import BaseModel, Field, ConfigDict
+backend\app\schemas\asset.py:2:from typing import List, Optional
+backend\app\schemas\audio.py:1:from pydantic import BaseModel, ConfigDict, Field
+backend\app\schemas\audio.py:2:from typing import Optional
+backend\app\schemas\scene.py:1:from typing import List, Optional, Literal, Any
+backend\app\schemas\scene.py:2:from pydantic import BaseModel
+backend\app\schemas\script.py:1:from pydantic import BaseModel, Field
+backend\app\schemas\script.py:2:from typing import List
+backend\app\schemas\timestamps.py:7:from WhisperX so downstream services (Animation, Composition, Rendering)
+backend\app\schemas\timestamps.py:13:from pydantic import BaseModel, Field
+backend\app\schemas\timestamps.py:14:from typing import List, Optional
+backend\app\schemas\video.py:1:from pydantic import BaseModel, Field
+backend\app\schemas\video.py:2:from typing import Optional, Dict, Any
+backend\app\schemas\video.py:3:from datetime import datetime
+backend\app\services\alignment.py:12:import logging
+backend\app\services\alignment.py:13:import time
+backend\app\services\alignment.py:14:from typing import Dict, Any, List, Optional, Tuple
+backend\app\services\alignment.py:15:import whisperx
+backend\app\services\alignment.py:16:import numpy as np
+backend\app\services\alignment.py:19:from backend.app.schemas.script import VideoScriptBlueprint
+backend\app\services\alignment.py:21:from backend.app.schemas.timestamps import (
+backend\app\services\assets\images.py:1:import os
+backend\app\services\assets\images.py:2:import uuid
+backend\app\services\assets\images.py:3:import logging
+backend\app\services\assets\images.py:4:import json
+backend\app\services\assets\images.py:5:import asyncio
+backend\app\services\assets\images.py:6:from datetime import datetime, timezone
+backend\app\services\assets\images.py:7:from typing import List, Dict, Any
+backend\app\services\assets\images.py:8:from crewai import Agent, Task, Crew
+backend\app\services\assets\images.py:9:from backend.app.schemas.asset import AssetItem
+backend\app\services\audio.py:1:import hashlib
+backend\app\services\audio.py:2:import json
+backend\app\services\audio.py:3:import logging
+backend\app\services\audio.py:4:import os
+backend\app\services\audio.py:5:import sys
+backend\app\services\audio.py:6:import wave
+backend\app\services\audio.py:7:from pathlib import Path
+backend\app\services\audio.py:8:from typing import Optional
+backend\app\services\audio.py:14:from backend.app.schemas.audio import AudioTrack, TTSRequest  # noqa: E402
+backend\app\services\audio.py:15:from backend.app.services.tts_provider import BaseTTSProvider, GeminiTTSProvider  # noqa: E402
+backend\app\services\script_agent.py:1:import os
+backend\app\services\script_agent.py:2:from openai import AsyncOpenAI
+backend\app\services\script_agent.py:3:from backend.app.schemas.script import VideoScriptBlueprint
+backend\app\services\tts_provider.py:1:from abc import ABC, abstractmethod
+backend\app\services\tts_provider.py:2:import asyncio
+backend\app\services\tts_provider.py:3:import base64
+backend\app\services\tts_provider.py:4:import io
+backend\app\services\tts_provider.py:5:import logging
+backend\app\services\tts_provider.py:6:import os
+backend\app\services\tts_provider.py:7:import wave
+backend\app\validators\scene_validator.py:3:from typing import Dict, Any, List, Tuple
+backend\app\validators\scene_validator.py:4:from ..schemas.scene import ScenePlan, CategoryScores, RevisionInstruction
+backend\app\validators\scene_validator.py:5:from ..config.quality import QualityRubric
+backend\main.py:1:import os
+backend\main.py:2:from fastapi import FastAPI
+backend\main.py:3:from dotenv import load_dotenv
+backend\main.py:4:from fastapi.middleware.cors import CORSMiddleware
+backend\main.py:7:from backend.routes.video_routes import router as video_router
+backend\routes\video_routes.py:1:import os
+backend\routes\video_routes.py:2:import logging
+backend\routes\video_routes.py:3:import uuid
+backend\routes\video_routes.py:4:from fastapi import APIRouter, BackgroundTasks, HTTPException
+backend\routes\video_routes.py:5:from pydantic import BaseModel
+backend\routes\video_routes.py:6:from supabase import create_client, Client
+backend\routes\video_routes.py:7:from dotenv import load_dotenv
+backend\routes\video_routes.py:9:from backend.app.pipeline.orchestrator import process_video_job
+backend\routes\video_routes.py:10:from backend.app.schemas.video import VideoRequest, JobResponse 
+backend\tests\test_alignment.py:11:import sys
+backend\tests\test_alignment.py:12:import os
+backend\tests\test_alignment.py:17:import pytest
+backend\tests\test_alignment.py:18:from unittest.mock import patch, MagicMock
+backend\tests\test_alignment.py:19:from backend.schemas.timestamps import AudioTrack, TimestampMap
+backend\tests\test_alignment.py:20:from backend.services.assets.alignment import AlignmentService
+backend\tests\test_alignment.py:23:from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
+backend\tests\test_assets.py:1:import pytest
+backend\tests\test_assets.py:2:from unittest.mock import patch, MagicMock
+backend\tests\test_assets.py:3:from services.assets.images import process_scene_elements
+backend\tests\test_audio.py:1:import os
+backend\tests\test_audio.py:2:import sys
+backend\tests\test_audio.py:3:from pathlib import Path
+backend\tests\test_audio.py:4:from unittest.mock import MagicMock
+backend\tests\test_audio.py:5:import tempfile
+backend\tests\test_audio.py:6:import pytest
+backend\tests\test_audio.py:17:from backend.app.schemas.audio import TTSRequest, AudioTrack  # noqa: E402
+backend\tests\test_audio.py:18:from backend.app.services.tts_provider import MockTTSProvider  # noqa: E402
+backend\tests\test_audio.py:19:from backend.app.services.audio import AudioService, generate_voiceover  # noqa: E402
+backend\tests\test_director.py:2:import pytest
+backend\tests\test_director.py:3:import json
+backend\tests\test_director.py:4:from unittest.mock import AsyncMock, patch, MagicMock
+backend\tests\test_director.py:5:from app.agents.director import SceneDirector
+backend\tests\test_director.py:6:from app.schemas.scene import ScenePlan, SceneQualityReport
+backend\tests\test_orchestrator.py:1:import pytest
+backend\tests\test_orchestrator.py:2:import asyncio
+backend\tests\test_orchestrator.py:3:from unittest.mock import MagicMock, AsyncMock, patch
+backend\tests\test_orchestrator.py:4:from backend.app.pipeline.orchestrator import process_video_job
+backend\tests\test_orchestrator.py:5:from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
+backend\tests\test_planner_pipeline.py:2:import pytest
+backend\tests\test_planner_pipeline.py:3:import json
+backend\tests\test_planner_pipeline.py:4:from unittest.mock import AsyncMock, patch, MagicMock
+backend\tests\test_planner_pipeline.py:6:from app.agents.planner import ScenePlanner
+backend\tests\test_planner_pipeline.py:7:from app.agents.director import SceneDirector
+backend\tests\test_planner_pipeline.py:8:from app.schemas.scene import ScenePlan, SceneQualityReport
+backend\tests\test_scene_planner.py:2:import pytest
+backend\tests\test_scene_planner.py:3:import json
+backend\tests\test_scene_planner.py:4:from unittest.mock import patch, MagicMock
+backend\tests\test_scene_planner.py:5:import os
+backend\tests\test_scene_planner.py:6:from app.agents.planner import ScenePlanner
+backend\tests\test_scene_planner.py:7:from app.schemas.scene import ScenePlan, Scene, VisualCue, AppearanceTrigger
