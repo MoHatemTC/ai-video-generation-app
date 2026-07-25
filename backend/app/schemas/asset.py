@@ -65,7 +65,7 @@ class AssetItem(BaseModel):
 
 class AssetResponseContract(BaseModel):
     """
-    The final schema delivery wrapper expected by Nada's Stage 6 pipeline.
+    The final schema delivery wrapper expected by Youssef's Animation Engine.
     """
     model_config = ConfigDict(populate_by_name=True)
 

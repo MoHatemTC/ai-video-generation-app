@@ -5,16 +5,17 @@ import json
 import asyncio
 import re
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import Dict, Any
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew
-from langchain_community.llms import LiteLLM
+from crewai import Agent, Task, Crew, LLM
 from backend.app.schemas.asset import AssetItem
 
 # Pydantic V2 Migration warnings are expected from CrewAI and can be ignored for now.
 # The UserWarning about 'model_name' is also from a dependency and not a blocker.
 
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 # --- Quality Evaluation Constants ---
 # Keywords that MUST be in the prompt for style adherence.
@@ -34,23 +35,33 @@ class AssetService:
     def _get_llm_client(self):
         try:
             api_key = os.getenv("LITELLM_API_KEY")
-            api_base = os.getenv("LITELLM_API_BASE")
+            api_base = os.getenv("LITELLM_API_BASE") or os.getenv("LITELLM_BASE_URL")
+            model_name = (
+                os.getenv("LITELLM_MODEL")
+                or os.getenv("DEFAULT_MODEL")
+                or "kimi-k2.5"
+            )
 
             if not api_key or not api_base:
-                raise ValueError("LITELLM_API_KEY and LITELLM_API_BASE must be set.")
+                raise ValueError(
+                    "LiteLLM credentials are missing. Set LITELLM_API_KEY and "
+                    "LITELLM_API_BASE or LITELLM_BASE_URL."
+                )
 
-            # Use CrewAI's native LLM wrapper. It uses LiteLLM under the hood.
-            # The 'openai/' prefix is a convention to tell LiteLLM to use the OpenAI client structure
-            # for the request, which is compatible with many endpoints.
+            # CrewAI delegates through LiteLLM. We keep the model name configurable so it
+            # matches whichever Sprints LiteLLM endpoint is currently active.
             return LLM(
-                model="openai/kimi-k2.5",
+                model=model_name,
                 api_key=api_key,
                 base_url=api_base,
             )
         except (ImportError, ValueError) as e:
             logger.warning(f"Could not initialize LiteLLM client ({e}). Using a fallback LLM for CrewAI.")
-            from langchain_community.llms.fake import FakeListLLM
-            return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
+            return LLM(model="openai/fake", api_key="fake")
+
+    def _build_fallback_prompt(self, cue: str) -> str:
+        """Generate a deterministic prompt when remote refinement is unavailable."""
+        return f"flat 2d illustration, {cue}, no text, no shadows"
 
     def _evaluate_prompt_quality(self, prompt: str) -> bool:
         """
@@ -65,10 +76,10 @@ class AssetService:
             logger.warning(f"Quality Warning: Prompt is missing required style keywords. Prompt: '{prompt}'")
             return False
 
-        # 2. Check for forbidden keywords, ignoring them if they are part of a "no <keyword>" phrase.
+        # 2. Check for forbidden keywords, ignoring them if they are part of a "no <keyword>" or similar phrase.
         for keyword in FORBIDDEN_PROMPT_KEYWORDS:
-            # This regex looks for the keyword as a whole word (\b), but only if it's NOT preceded by "no ".
-            pattern = rf"(?<!no\s)\b{re.escape(keyword)}\b"
+            # This regex looks for the keyword as a whole word (\b), but only if it's NOT preceded by common negation words.
+            pattern = rf"(?<!\bno\s)(?<!\bwithout\s)(?<!\bavoid\s)\b{re.escape(keyword)}\b"
             if re.search(pattern, prompt_lower):
                 logger.warning(f"Quality Warning: Prompt contains forbidden keyword '{keyword}'. Prompt: '{prompt}'")
                 return False
@@ -110,8 +121,7 @@ class AssetService:
     def _build_prompt_template(self, cue: str) -> str:
         """Builds a standardized prompt template by loading it from an external file."""
         try:
-            # Per CONTRIBUTING.md, prompts should be external files for better management.
-            template_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'prompts', 'visual_prompt_template.md')
+            template_path = os.path.join(os.path.dirname(__file__), "visual_prompt_template.md")
             with open(template_path, 'r', encoding='utf-8') as f:
                 template = f.read()
         except FileNotFoundError:
@@ -133,43 +143,48 @@ Based on the original cue, generate a single, optimized prompt string that stric
     async def resolve_visual_cue(
         self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str
     ) -> AssetItem:
-        llm_client = self._get_llm_client()
+        if os.getenv("ASSET_REMOTE_LLM_ENABLED", "1").lower() in {"0", "false", "no"}:
+            optimized_prompt = self._build_fallback_prompt(cue)
+        else:
+            llm_client = self._get_llm_client()
 
-        design_director = Agent(
-            role="Educational Visual Design Director",
-            goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
-            backstory="You are an expert visual layout designer at Sprints Video Studio.",
-            verbose=False,
-            allow_delegation=False,
-            llm=llm_client
-        )
+            design_director = Agent(
+                role="Educational Visual Design Director",
+                goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
+                backstory="You are an expert visual layout designer at Sprints Video Studio.",
+                verbose=False,
+                allow_delegation=False,
+                llm=llm_client
+            )
 
-        prompt_template = self._build_prompt_template(cue)
+            prompt_template = self._build_prompt_template(cue)
 
-        refinement_task = Task(
-            description=prompt_template,
-            expected_output="A single, optimized prompt string ready for an image generation model.",
-            agent=design_director
-        )
+            refinement_task = Task(
+                description=prompt_template,
+                expected_output="A single, optimized prompt string ready for an image generation model.",
+                agent=design_director
+            )
 
-        my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+            my_crew = Crew(agents=[design_director], tasks=[refinement_task])
 
-        try:
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, my_crew.kickoff)
-            refined_prompt = str(result).strip() if result else ""
-            
-            # Perform automated quality evaluation. If it fails, fall back to a safer prompt.
-            if self._evaluate_prompt_quality(refined_prompt):
-                optimized_prompt = refined_prompt
-            else:
-                logger.warning(f"Refined prompt '{refined_prompt}' failed quality check. Reverting to basic prompt for cue: '{cue}'")
-                optimized_prompt = f"flat 2d illustration, {cue}, no text, no shadows"
+            try:
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(None, my_crew.kickoff)
+                refined_prompt = str(result).strip() if result else ""
 
-        except Exception as e:
-            logger.error(f"Asset refinement task failed ({e}). Reverting to basic prompt.")
-            optimized_prompt = f"flat 2d illustration, {cue}, no text, no shadows"
+                # Perform automated quality evaluation. If it fails, fall back to a safer prompt.
+                if self._evaluate_prompt_quality(refined_prompt):
+                    optimized_prompt = refined_prompt
+                else:
+                    logger.warning(
+                        f"Refined prompt '{refined_prompt}' failed quality check. "
+                        f"Reverting to basic prompt for cue: '{cue}'"
+                    )
+                    optimized_prompt = self._build_fallback_prompt(cue)
 
+            except Exception as e:
+                logger.error(f"Asset refinement task failed ({e}). Reverting to basic prompt.")
+                optimized_prompt = self._build_fallback_prompt(cue)
         asset = AssetItem(
             asset_id=asset_id,
             scene_reference=scene_id,

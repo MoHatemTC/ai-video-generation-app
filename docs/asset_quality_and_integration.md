@@ -35,15 +35,40 @@ The quality of generated assets is measured against the following four pillars. 
     - **Inclusivity:** Assets should reflect diversity and inclusivity where applicable.
     - **Brand Alignment:** Must not contain elements that contradict Sprints' brand guidelines.
 
-## 2. Animation Engine Integration Contract
+## 2. Prompt Refinement & Fallback Rules
 
-This section will be populated after coordination with Youssef. It will define the precise technical contract required for compatibility with the animation engine.
+The asset pipeline utilizes CrewAI and an LLM to refine simple script cues into production-ready prompts.
+- **Automated Guardrails:** The pipeline checks every generated prompt. It ensures the presence of required style keywords (e.g., `flat 2d`, `illustration`) and strictly filters out forbidden concepts using negative lookbehinds (e.g., `(?<!\bno\s)(?<!\bwithout\s)(?<!\bavoid\s)\bshadows\b`).
+- **Resilient Fallback:** If the LLM generates a prompt that fails the quality checks, or if the API connection fails, the system automatically falls back to a deterministic, safe format: `flat 2d illustration, {cue}, no text, no shadows`.
 
-### 2.1. Data Schema (JSON)
-- *Awaiting details from Youssef.*
+## 3. Animation Engine Integration Contract
 
-### 2.2. Asset Naming & URL Convention
-- *Awaiting details from Youssef.*
+**[TODO: Proposed standard pending final confirmation with Youssef]**
 
-### 2.3. Required Metadata Fields for Search
-- *Awaiting details from Youssef.*
+This section defines the technical JSON payload contract proposed for compatibility with Youssef's Animation Engine.
+
+### 3.1. Data Schema (`AssetItem`)
+The downstream engine expects a flat array of visual assets. Each asset will adhere to the following schema structure:
+- `asset_id`: Unique identifier for the asset (e.g., `videoID_sceneX_imgY`).
+- `scene_reference`: Identifies which scene the asset belongs to (`scene_id`).
+- `cue_reference`: Ties the asset back to the original script cue (`cue_id`).
+- `prompt`: The finalized, quality-checked visual description.
+- `url`: The fully qualified storage URL where the asset is hosted (e.g., Supabase URL).
+- `aspect_ratio`: Defines the framing (Standard is `16:9`).
+- `resolution`: Defines the quality (Standard is `1920x1080`).
+- `license`: Rights associated with the asset (e.g., `open-source`).
+
+### 3.2. Execution & Testing Instructions
+
+To verify the pipeline logic and test the integration payload generation locally:
+
+**Run the Automated Test Suite:**
+```bash
+pytest backend/tests/test_assets.py
+```
+
+**Execute the Asset Pipeline:**
+```bash
+# This will process mock cues, run the prompt refinement, and output the finalized JSON to data/supabase_asset_metadata.json
+python run_asset_pipeline.py
+```

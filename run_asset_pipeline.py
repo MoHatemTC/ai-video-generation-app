@@ -1,9 +1,12 @@
 import asyncio
 import json
-from backend.app.services.assets.images import AssetService
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
+os.environ.setdefault("ASSET_REMOTE_LLM_ENABLED", "0")
+
+from backend.app.services.assets.images import AssetService
 
 async def main():
     service = AssetService()
@@ -33,6 +36,7 @@ async def main():
     video_id = "sprint_2_demo_video"
 
     print("🚀 Processing visual cues through AssetService pipeline...\n")
+    generated_assets = []
     for item in visual_cues:
         print(f"Processing cue: '{item['cue']}'...")
         asset = await service.resolve_visual_cue(
@@ -42,9 +46,13 @@ async def main():
             asset_id=item["asset_id"],
             video_id=video_id
         )
+        generated_assets.append(asset)
         print(f"✅ Generated Prompt: {asset.prompt}\n")
 
-    print("🎉 Pipeline run complete! Outputs saved to data/supabase_asset_metadata.json")
+    print(
+        f"🎉 Pipeline run complete! Generated {len(generated_assets)} assets and saved them to "
+        "data/supabase_asset_metadata.json"
+    )
 
 if __name__ == "__main__":
     # This is the crucial change: It clears the file before writing new data.

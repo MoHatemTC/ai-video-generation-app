@@ -53,11 +53,11 @@ async def test_process_scene_elements_success(MockAssetService):
     
     # Was the resolve_visual_cue method called with the correct arguments?
     mock_service_instance.resolve_visual_cue.assert_awaited_once_with(
-        cue="A cat sitting on a mat",
-        scene_id="scene_1",
-        cue_id="cue_1",
-        asset_id="image_1",
-        video_id="video_test_123"
+        "A cat sitting on a mat",
+        "scene_1",
+        "cue_1",
+        "image_1",
+        "video_test_123"
     )
 
     # Is the final result structured correctly based on the mock asset?
@@ -110,10 +110,12 @@ class TestAssetServiceQualityEvaluation:
 
     def test_evaluate_prompt_quality_good_prompt_with_negation(self):
         """
-        Test that a high-quality prompt with negative constraints (e.g., "no shadow") passes.
+        Test that a high-quality prompt with negative constraints (e.g., "no shadows", "without shadows", "avoid text") passes.
         """
-        good_prompt = "A flat 2d illustration of a robot, centered, clean lines, no shadow, no text."
-        assert self.service._evaluate_prompt_quality(good_prompt) is True
+        good_prompt_1 = "A flat 2d illustration of a robot, centered, clean lines, no shadows, no text."
+        good_prompt_2 = "A flat 2d illustration of a robot, centered, clean lines, without shadows, avoid text."
+        assert self.service._evaluate_prompt_quality(good_prompt_1) is True
+        assert self.service._evaluate_prompt_quality(good_prompt_2) is True
 
     def test_evaluate_prompt_quality_with_forbidden_keyword(self):
         """
