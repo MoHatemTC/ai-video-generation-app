@@ -16,9 +16,9 @@ import whisperx
 import numpy as np
 
 # Use the team's canonical script model
-from models.script import VideoScriptBlueprint
+from backend.app.schemas.script import VideoScriptBlueprint
 
-from app.schemas.timestamps import (
+from backend.app.schemas.timestamps import (
     AudioTrack,
     TimestampMap,
     WordTimestamp,
@@ -156,7 +156,7 @@ class AlignmentService:
         Does not mutate `script` or its segments -- the caller's Script object is
         read-only input here, consistent with it being a shared upstream contract.
         """
-        total_chars = sum(len(seg.text) for seg in script.segments)
+        total_chars = sum(len(seg.narrator_text) for seg in script.segments)
         audio_duration = known_duration or (len(audio) / self.sample_rate)
 
         segments = []
@@ -165,7 +165,7 @@ class AlignmentService:
 
         for seg in script.segments:
             # Guess duration based on character count ratio
-            duration_ratio = (len(seg.text) / total_chars) if total_chars > 0 else 0
+            duration_ratio = (len(seg.narrator_text) / total_chars) if total_chars > 0 else 0
             paragraph_duration = duration_ratio * audio_duration
 
             seg_start = current_time
@@ -177,10 +177,11 @@ class AlignmentService:
             end_time = min(audio_duration, seg_end + 10.0)
 
             segments.append({
-                "text": seg.text,
+                "text": seg.narrator_text,
                 "start": start_time,
                 "end": end_time
             })
+
 
             # Move tracker forward
             current_time = seg_end

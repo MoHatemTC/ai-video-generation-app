@@ -16,11 +16,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import pytest
 from unittest.mock import patch, MagicMock
-from app.schemas.timestamps import AudioTrack, TimestampMap
-from app.services.alignment import AlignmentService
+from backend.schemas.timestamps import AudioTrack, TimestampMap
+from backend.services.assets.alignment import AlignmentService
 
 # Updated to match the shared team contract and integer IDs
-from models.script import VideoScriptBlueprint, ScriptSegment
+from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
 
 MOCK_SCRIPT = VideoScriptBlueprint(
     title="Test Video",

@@ -1,10 +1,9 @@
-# Backend
 
 This folder will contain the generation pipeline, API, prompts, data models, and tests.
 
 Interns should create implementation files as part of assigned tasks.
 
-## Folder Guide
+# 🎨 Asset Service Lane — Sprint 1 (Omar Eldaly)
 
 - `routes/` - API endpoints.
 - `services/` - pipeline stages and business logic.
