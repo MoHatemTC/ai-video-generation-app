@@ -12,7 +12,7 @@ const PIPELINE_STAGES = [
   { id: 'completed', label: 'Video Ready', dataKey: null }
 ];
 
-const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8000';
 
 export default function App() {
   const [prompt, setPrompt] = useState('explain LangChain');
@@ -49,9 +49,8 @@ export default function App() {
           setProgress(Math.round(((currentIndex + 1) / PIPELINE_STAGES.length) * 100));
         } else if (data.status === 'completed') {
           setProgress(100);
-        } else if (data.status === 'failed') {
-          setProgress(67);
         }
+        // Removed the hardcoded 67% progress block so it freezes at the exact stage of failure
 
         const isFinishedOrFailed = data.status === 'completed' || data.status === 'failed';
         const stagesToFetch = PIPELINE_STAGES.filter((stage, idx) => 

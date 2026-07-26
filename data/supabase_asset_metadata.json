@@ -323,5 +323,83 @@
         "source": "generated",
         "license": "open-source",
         "registered_at": "2026-07-16T20:34:29.279896+00:00"
+    },
+    {
+        "video_id": "default_video_id",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "",
+        "element": "A futuristic computer server",
+        "prompt": "Illustration showing: A futuristic computer server",
+        "url": "https://supabase-storage.local/assets/1dcb68b0-3889-4f3a-ae0a-0a2671d16574.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-24T21:11:47.302604+00:00"
+    },
+    {
+        "video_id": "default_video_id",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "",
+        "element": "A futuristic computer server",
+        "prompt": "Illustration showing: A futuristic computer server",
+        "url": "https://supabase-storage.local/assets/d5ce90c5-c36c-4423-ab91-f55adcc65bc2.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-24T21:18:47.489352+00:00"
+    },
+    {
+        "video_id": "default_video_id",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "",
+        "element": "An educational illustration",
+        "prompt": "Illustration showing: An educational illustration",
+        "url": "https://supabase-storage.local/assets/ae479c9c-0499-41d6-95b8-6f5c56c39e8b.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-25T00:12:01.432373+00:00"
+    },
+    {
+        "video_id": "dummy_video_123",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "Educational diagram",
+        "prompt": "Illustration showing: Educational diagram",
+        "url": "https://supabase-storage.local/assets/d16fd23e-361c-4b88-a31e-e0fea2a6d8db.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-25T00:52:58.183792+00:00"
+    },
+    {
+        "video_id": "dummy_video_123",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "Educational diagram",
+        "prompt": "Illustration showing: Educational diagram",
+        "url": "https://supabase-storage.local/assets/df405b78-bbaa-4f48-9236-af77da26b985.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-26T07:09:41.564867+00:00"
+    },
+    {
+        "video_id": "dummy_video_123",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "Educational diagram",
+        "prompt": "Illustration showing: Educational diagram",
+        "url": "https://supabase-storage.local/assets/52a2e950-5bd2-432c-8489-1f2cb87c7b8b.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-26T07:23:21.777935+00:00"
     }
 ]

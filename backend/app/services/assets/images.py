@@ -9,31 +9,15 @@ from crewai import Agent, Task, Crew
 from backend.app.schemas.asset import AssetItem
 
 # Pydantic V2 Migration warnings are expected from CrewAI and can be ignored for now.
-# The UserWarning about 'model_name' is also from a dependency and not a blocker.
-
 logger = logging.getLogger(__name__)
 
 class AssetService:
     def __init__(self):
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
         self.local_storage_db = "data/supabase_asset_metadata.json"
         os.makedirs(os.path.dirname(self.local_storage_db), exist_ok=True)
         if not os.path.exists(self.local_storage_db):
             with open(self.local_storage_db, "w") as f:
                 json.dump([], f)
-
-    def _get_llm_client(self):
-        # This dynamic import can help avoid issues where the LLM client
-        # might not be available in all environments (like CI/CD).
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            return ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=self.gemini_api_key)
-        except ImportError:
-            logger.warning("langchain_google_genai not found. Using a fallback LLM for CrewAI.")
-            # Fallback to a mock or a different available LLM if needed
-            from langchain_community.llms.fake import FakeListLLM
-            return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
-
 
     def register_asset_in_storage(self, asset: AssetItem, video_id: str) -> str:
         try:
@@ -66,32 +50,37 @@ class AssetService:
     async def resolve_visual_cue(
         self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str
     ) -> AssetItem:
-        llm_client = self._get_llm_client()
-
-        design_director = Agent(
-            role="Educational Visual Design Director",
-            goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
-            backstory="You are an expert visual layout designer at Sprints Video Studio.",
-            verbose=False,
-            allow_delegation=False,
-            llm=llm_client
-        )
-
-        refinement_task = Task(
-            description=f"Refine this cue into an image generator prompt: '{cue}'",
-            expected_output="A single optimized prompt string.",
-            agent=design_director
-        )
-
-        my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+        
+        # Pull the model string from the .env file, default to openrouter/free
+        model_string = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 
         try:
+            # MOVE AGENT CREATION INSIDE TRY/EXCEPT! 
+            # If CrewAI crashes due to API keys or Pydantic, the fallback catches it.
+            design_director = Agent(
+                role="Educational Visual Design Director",
+                goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
+                backstory="You are an expert visual layout designer at Sprints Video Studio.",
+                verbose=False,
+                allow_delegation=False,
+                llm=model_string  # <--- FIX: Passing string instead of LangChain object
+            )
+
+            refinement_task = Task(
+                description=f"Refine this cue into an image generator prompt: '{cue}'",
+                expected_output="A single optimized prompt string.",
+                agent=design_director
+            )
+
+            my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+            
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, my_crew.kickoff)
-            # Handle different possible result structures from CrewAI/LangChain
             optimized_prompt = result if isinstance(result, str) else str(result).strip()
+            
         except Exception as e:
-            logger.error(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
+            logger.warning(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
+            # Fallback gracefully keeps the pipeline alive!
             optimized_prompt = f"Illustration showing: {cue}"
 
         asset = AssetItem(
