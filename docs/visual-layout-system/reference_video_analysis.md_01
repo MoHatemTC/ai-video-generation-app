@@ -1,0 +1,42 @@
+# Reference Video Analysis
+
+**Video used:** "3 - What is LangChain.mp4"
+
+## What I did
+
+Watched the video a few times and noted where the look and pacing change — background color,
+how much text/detail is on screen, how long each scene stays up before switching.
+
+## What I found
+
+The video switches between three visual "moods" rather than having one single look:
+
+1. **Light background, explanatory** — used for most of the main narration. Plain background,
+   text, sometimes a small icon. This is the default look, and it's on screen the longest.
+2. **Dark background, high contrast** — used at the very start (intro), once in the middle for
+   what looks like a diagram or code snippet, and again at the end (closing). Feels like it's
+   used to signal "this part is different" from the regular narration.
+3. **Very bright, almost empty** — used once, for a long stretch, just one short line of big
+   text on screen. Reads like a key-takeaway moment held for emphasis.
+
+Scenes don't change very often — most stay up for 20-35+ seconds — so this is closer to a
+slide-plus-voiceover style than fast-cut content, which lines up with what the PRD describes.
+
+
+## Still need to confirm
+
+- Exact on-screen copy and font used per scene (need the brand guideline doc, wasn't provided)
+- Exact colors — I can tell light vs. dark but not exact hex values
+- Whether the dark scenes are diagrams, code snippets, or a mix of both
+
+## How this maps to the layout catalogue
+
+- Light mode → **Text & Explanation**
+- Dark mode → **Image & Media** (diagrams/code) and **Closing/CTA**
+- Bright/minimal mode → **Key Takeaway**
+
+The other required layouts (Title, Narrator/Presenter, Comparison, Step-by-step) weren't
+literally present as their own segments in this one video — a 3-minute explainer isn't going
+to have a side-by-side comparison scene, for example. Those are built using the same visual
+language (same colors, spacing, typography) rather than something I directly saw, so they
+should be sanity-checked once more reference videos are available.
