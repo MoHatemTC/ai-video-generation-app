@@ -10,29 +10,11 @@ from backend.app.services.tts_provider import GeminiTTSProvider
 from backend.app.services.alignment import AlignmentService
 from backend.app.schemas.timestamps import AudioTrack
 from backend.app.services.assets.images import process_scene_elements
+from backend.app.agents.planner import ScenePlanner
 
+from backend.app.config.model_config import get_planner_config
 
 logger = logging.getLogger(__name__)
-
-# --- DUMMY PLACEHOLDER ---
-# Mostafa's Scene Planner (Still waiting for his real code)
-async def run_planner_crew_sync(script_dict: dict) -> dict:
-    """
-    A robust mock that respects the ScenePlanBlueprint contract.
-    """
-    return {
-    "video_id": "dummy_video_123",
-        "scenes": [
-            {
-                "scene_id": "scene_1",
-                "layout_hint": "title-card",
-                "script_segments": ["s1"],
-                "visual_elements": [
-                {"element_type": "image", "description": "Educational diagram", "cue_id": "cue_1"}
-                ]
-            }
-        ]
-    }
 
 # --- THE MAIN BRAIN ---
 async def process_video_job(job_id: str, prompt: str, supabase: Client):
@@ -51,48 +33,49 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         script_dict = script_data.model_dump() if hasattr(script_data, 'model_dump') else script_data
         supabase.table("videos").update({"script_data": script_dict}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 1 Complete!")
-
-        # STAGE 2: Scene Planner (Mostafa)
+        #################################################################################################
+        # --- STAGE 2: Scene Planner (Mostafa's Real Code) ---
         current_stage = "planner"
         supabase.table("videos").update({"status": "planning_scenes"}).eq("id", job_id).execute()
+        
+        # 1. Instantiate the agent first!
+        planner_agent = ScenePlanner(
+            model_name=get_planner_config()["model_name"],
+            api_key=get_planner_config()["api_key"],
+            base_url=get_planner_config()["base_url"]
+        )
+        
+        # 2. Now await the scene planning
+        scene_plan_pydantic = await planner_agent.plan_scenes(script_dict)
+        
+        # 3. Convert to dict and save
+        scene_data_dict = scene_plan_pydantic.model_dump()
+        supabase.table("videos").update({"scene_data": scene_data_dict}).eq("id", job_id).execute()
+        logger.info(f"[{job_id}] Stage 2 Complete!")
 
-        # Run the mock planner
-        scene_data = await run_planner_crew_sync(script_dict)
-
-        # Save the raw dictionary directly (no gatekeeper for now)
-        supabase.table("videos").update({"scene_data": scene_data}).eq("id", job_id).execute()
-        logger.info(f"[{job_id}] Stage 2 Complete (Mock Mode)!")
-
-        # --- STAGE 3: Audio Generation (Mahdy / Real Gemini TTS) ---
-        supabase.table("videos").update({"status": "generating_audio"}).eq("id", job_id).execute()        
-        # Instantiate with your API key from .env
+        # --- STAGE 3: Audio Generation ---
+        supabase.table("videos").update({"status": "generating_audio"}).eq("id", job_id).execute()
         tts_provider = GeminiTTSProvider()
-        
-        # Join Ahmed's script text
-        # --- AFTER (Accessing Pydantic attributes directly) ---
         full_script_text = " ".join([seg.narrator_text for seg in script_data.segments])
-        
-        # Generate real audio
         audio_bytes = await tts_provider.generate_speech(full_script_text)
         
-        # HANDSHAKE: Save bytes to disk so Stage 4 (WhisperX) can find it
         audio_path = f"data/{job_id}.wav"
+        os.makedirs("data", exist_ok=True)
         with open(audio_path, "wb") as f:
             f.write(audio_bytes)
             
-        # Update DB with audio metadata
         supabase.table("videos").update({
-            "audio_metadata": {"audio_file_path": audio_path, "duration": 0} # Duration can be updated later
+            "audio_metadata": {"audio_file_path": audio_path}
         }).eq("id", job_id).execute()
 
         # STAGE 4: Alignment / WhisperX (Osama)
         current_stage = "alignment"
         supabase.table("videos").update({"status": "aligning_timestamps"}).eq("id", job_id).execute()
-        logger.info(f"[{job_id}] Running Stage 4: WhisperX Alignment...")
         
         aligner = AlignmentService()
         audio_track = AudioTrack(audio_id=job_id, audio_path=audio_path, language="en")
         
+        # CORRECTED: Use to_thread to handle synchronous heavy processing
         timestamp_data = await asyncio.to_thread(
             aligner.align, 
             script=script_data, 
@@ -103,18 +86,18 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         timestamp_dict = timestamp_data.model_dump() if hasattr(timestamp_data, 'model_dump') else timestamp_data
         supabase.table("videos").update({"timestamp_data": timestamp_dict}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 4 Complete!")
-
-        # STAGE 5: Assets (Omar El Daly)
+        #################################################################################################
+        # --- STAGE 5: Assets (Omar El Daly) ---
         current_stage = "assets"
         supabase.table("videos").update({"status": "fetching_assets"}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Running Stage 5: Asset Service...")
         
-        # Now using Omar El Daly's fixed code!
-        asset_data = await process_scene_elements(scene_data)
+        # FIX: Pass the dictionary (scene_data_dict), NOT the Pydantic object!
+        asset_data = await process_scene_elements(scene_data_dict)
         
         supabase.table("videos").update({"asset_data": asset_data}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 5 Complete!")
-
+        #################################################################################################
         # --- ARCHITECTURE PIVOT ---
         # Stages 6 (Composition), 7 (Animation), and 8 (Render) are now handled by the React Frontend!
         # We mark the backend job as fully completed here.

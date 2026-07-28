@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, Terminal, ChevronDown, ChevronUp, Sparkles, Download, ArrowRight, ShieldCheck } from 'lucide-react';
+import ScenePlayer from './components/ScenePlayer';
 
 const PIPELINE_STAGES = [
   { id: 'generating_script', label: 'Script Generation (Ahmed)', dataKey: 'script_data' },
@@ -272,7 +273,12 @@ export default function App() {
                 <p className="text-gray-600 text-sm mb-6">Your AI-generated course has been successfully stitched and rendered.</p>
                 
                 <div className="aspect-video max-w-2xl mx-auto rounded-xl overflow-hidden shadow-2xl bg-black mb-6">
-                  <video src={videoUrl} controls className="w-full h-full object-cover" />
+                  <ScenePlayer 
+                    scriptData={stageData.script_data} 
+                    audioData={stageData.audio_metadata} 
+                    timestampData={stageData.timestamp_data}
+                    assetData={stageData.asset_data}
+                  />
                 </div>
 
                 <a

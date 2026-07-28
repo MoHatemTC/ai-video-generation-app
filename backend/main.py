@@ -6,6 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import the router we just created
 from backend.routes.video_routes import router as video_router
 
+import litellm
+litellm.model_alias_map = {
+    "planner-model": os.getenv("PLANNER_MODEL", "gemini/gemini-3.5-flash")
+}
+
 load_dotenv()
 
 # Read the frontend URL from environment, default to localhost for development

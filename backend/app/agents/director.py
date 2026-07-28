@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 from crewai import Agent, Task, Crew, LLM
 import litellm
 
-from ..schemas.scene import ScenePlan, SceneQualityReport, CategoryScores
+from ..schemas.scene import ScenePlan, SceneQualityReport, CategoryScores, RevisionInstruction
 from ..config.quality import QualityRubric
 from ..validators import validate_scene_plan
 from ..prompts.planner import SYSTEM_PROMPT, DIRECTOR_TASK_TEMPLATE, RETRY_PROMPT
