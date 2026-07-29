@@ -20,7 +20,7 @@ from backend.app.schemas.timestamps import AudioTrack, TimestampMap
 from backend.app.services.assets.alignment import AlignmentService
 
 # Updated to match the shared team contract and integer IDs
-from models.script import VideoScriptBlueprint, ScriptSegment
+from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
 
 MOCK_SCRIPT = VideoScriptBlueprint(
     title="Test Video",

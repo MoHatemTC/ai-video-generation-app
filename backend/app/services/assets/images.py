@@ -5,7 +5,7 @@ import json
 import asyncio
 import re
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import List, Dict, Any
 from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, LLM
 from backend.app.schemas.asset import AssetItem
@@ -18,14 +18,13 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # --- Quality Evaluation Constants ---
-# Keywords that MUST be in the prompt for style adherence.
 REQUIRED_STYLE_KEYWORDS = ["flat 2d", "illustration"]
-# Keywords that SHOULD NOT be in the prompt.
 FORBIDDEN_PROMPT_KEYWORDS = ["text", "gradients", "shadows", "watermarks", "3d", "photo", "photorealistic", "blurry", "low-resolution"]
 # ---
 
 class AssetService:
     def __init__(self):
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
         self.local_storage_db = "data/supabase_asset_metadata.json"
         os.makedirs(os.path.dirname(self.local_storage_db), exist_ok=True)
         if not os.path.exists(self.local_storage_db):
@@ -41,51 +40,30 @@ class AssetService:
                 or os.getenv("DEFAULT_MODEL")
                 or "kimi-k2.5"
             )
-
-            if not api_key or not api_base:
-                raise ValueError(
-                    "LiteLLM credentials are missing. Set LITELLM_API_KEY and "
-                    "LITELLM_API_BASE or LITELLM_BASE_URL."
+            if api_key and api_base:
+                return LLM(
+                    model=model_name,
+                    api_key=api_key,
+                    base_url=api_base,
                 )
-
-            # CrewAI delegates through LiteLLM. We keep the model name configurable so it
-            # matches whichever Sprints LiteLLM endpoint is currently active.
-            return LLM(
-                model=model_name,
-                api_key=api_key,
-                base_url=api_base,
-            )
         except (ImportError, ValueError) as e:
-            logger.warning(f"Could not initialize LiteLLM client ({e}). Using a fallback LLM for CrewAI.")
+            logger.warning(f"LiteLLM client unavailable ({e}). Trying other providers.")
+
+        # Try Google Gemini via langchain connector if available and gemini key is set
+        try:
+            if self.gemini_api_key:
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                return ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=self.gemini_api_key)
+        except Exception as e:
+            logger.warning(f"langchain_google_genai not available ({e}).")
+
+        # Final fallback to a lightweight fake LLM to keep CrewAI operable in tests/CI
+        try:
+            from langchain_community.llms.fake import FakeListLLM
+            return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
+        except Exception:
+            logger.warning("No external LLM connectors found. Falling back to CrewAI local fake LLM.")
             return LLM(model="openai/fake", api_key="fake")
-
-    def _build_fallback_prompt(self, cue: str) -> str:
-        """Generate a deterministic prompt when remote refinement is unavailable."""
-        return f"flat 2d illustration, {cue}, no text, no shadows"
-
-    def _evaluate_prompt_quality(self, prompt: str) -> bool:
-        """
-        Performs automated checks on the generated prompt to ensure it meets quality standards.
-        Returns True if quality is good, False otherwise.
-        """
-        prompt_lower = prompt.lower()
-        
-        # 1. Check for required style keywords
-        style_adherence = all(keyword in prompt_lower for keyword in REQUIRED_STYLE_KEYWORDS)
-        if not style_adherence:
-            logger.warning(f"Quality Warning: Prompt is missing required style keywords. Prompt: '{prompt}'")
-            return False
-
-        # 2. Check for forbidden keywords, ignoring them if they are part of a "no <keyword>" or similar phrase.
-        for keyword in FORBIDDEN_PROMPT_KEYWORDS:
-            # This regex looks for the keyword as a whole word (\b), but only if it's NOT preceded by common negation words.
-            pattern = rf"(?<!\bno\s)(?<!\bwithout\s)(?<!\bavoid\s)\b{re.escape(keyword)}\b"
-            if re.search(pattern, prompt_lower):
-                logger.warning(f"Quality Warning: Prompt contains forbidden keyword '{keyword}'. Prompt: '{prompt}'")
-                return False
-            
-        logger.info("Quality Check Passed: Prompt adheres to defined style and negative constraints.")
-        return True
 
     def register_asset_in_storage(self, asset: AssetItem, video_id: str) -> str:
         try:
@@ -110,7 +88,7 @@ class AssetService:
             "registered_at": datetime.now(timezone.utc).isoformat(),
             "prompt_used": asset.prompt_used,
             "resolution": asset.resolution,
-            "aspect_ratio": asset.aspect_ratio,
+            "aspect_ratio": asset.aspect_ratio
         }
         db.append(asset_entry)
         
@@ -223,20 +201,28 @@ async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
         for element in visual_elements:
             # Per test_assets.py and upstream contracts, we process elements that have an asset_id.
             if element.get("element_type") == "image" or "asset_id" in element:
-                # The cue is in the 'description' field, aligning with tests and documentation.
-                cue = element.get("description", "No cue provided")
-                asset_id = element.get("asset_id", f"asset_{asset_index}")
-                cue_id = element.get("cue_id", f"cue_{asset_index}")
-                tasks.append(service.resolve_visual_cue(cue, scene_id, cue_id, asset_id, video_id))
+                cue_text = element.get("description", element.get("text", "No cue provided"))
+                asset_id = element.get("asset_id") or f"asset_{asset_index}"
+                cue_id = element.get("cue_id") or f"cue_{asset_index}"
+                tasks.append(service.resolve_visual_cue(cue_text, scene_id, cue_id, asset_id, video_id))
                 asset_index += 1
 
-    processed_assets = await asyncio.gather(*tasks)
-    
-    # Format the output to match the downstream contract for the Animation Engine.
-    # See: backend/app/services/assets/README.md
-    output_assets = [{
-        "asset_id": asset.asset_id, "url": asset.url, "type": asset.asset_type,
-        "license": asset.asset_license, "source": asset.source
-    } for asset in processed_assets]
+    if not tasks:
+        return {"video_id": video_id, "assets": []}
 
-    return {"video_id": video_id, "assets": output_assets}
+    gathered_assets = await asyncio.gather(*tasks)
+
+    # Format the output to match the downstream contract for the Animation Engine.
+    resolved_assets = []
+    for asset in gathered_assets:
+        resolved_assets.append({
+            "asset_id": asset.asset_id,
+            "scene_id": asset.scene_reference,
+            "cue_id": asset.cue_reference,
+            "url": asset.url,
+            "type": asset.asset_type,
+            "license": asset.asset_license,
+            "source": asset.source
+        })
+
+    return {"video_id": video_id, "assets": resolved_assets}

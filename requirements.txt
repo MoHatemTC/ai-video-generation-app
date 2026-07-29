@@ -1,0 +1,21 @@
+# Web framework
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+
+# LLM / agents
+openai
+crewai
+litellm==1.91.4
+
+# Database / backend-as-a-service
+supabase
+
+# Alignment (word/segment timestamps)
+whisperx
+numpy
+
+# Testing
+pytest
+pytest-asyncio

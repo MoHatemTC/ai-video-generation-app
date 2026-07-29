@@ -1,0 +1,261 @@
+{
+  "schema_version": "1.0",
+  "video_id": "docker-explainer-001",
+  "title": "What is Docker?",
+  "total_duration_seconds": 58.0,
+  "scenes": [
+    {
+      "scene_id": "0",
+      "text": "What is Docker? Let's explore how containerization changed software deployment forever.",
+      "subtitle": "What is Docker? Containerization for modern software development.",
+      "hold_ms": 7000,
+      "script_segment_ids": ["seg-doc-0"],
+      "layout_hint": "title-card",
+      "visual_cues": [
+        {
+          "cue_id": "c0-logo",
+          "description": "Docker Whale Logo",
+          "element_type": "icon",
+          "asset_id": "asset-docker-logo",
+          "linked_segment_id": "seg-doc-0",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "top",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c0-title",
+          "description": "Title Text",
+          "element_type": "text",
+          "content": "What is Docker?",
+          "linked_segment_id": "seg-doc-0",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "center",
+          "importance": "primary"
+        }
+      ]
+    },
+    {
+      "scene_id": "1",
+      "text": "Before Docker, developers constantly faced the infamous problem: It works on my machine, but breaks in production due to OS differences.",
+      "subtitle": "Before Docker — applications broke in production due to OS dependencies.",
+      "hold_ms": 10000,
+      "script_segment_ids": ["seg-doc-1"],
+      "layout_hint": "risk-diagram",
+      "visual_cues": [
+        {
+          "cue_id": "c1-device",
+          "description": "Developer Machine",
+          "element_type": "diagram",
+          "asset_id": "asset-dev-laptop",
+          "linked_segment_id": "seg-doc-1",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c1-beams",
+          "description": "Broken deployment paths",
+          "element_type": "svg",
+          "asset_id": "asset-risk-beams",
+          "linked_segment_id": "seg-doc-1",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "center",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c1-osdiff",
+          "description": "OS Mismatch",
+          "element_type": "icon",
+          "asset_id": "asset-os-mismatch",
+          "linked_segment_id": "seg-doc-1",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-12" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c1-dephell",
+          "description": "Dependency Conflict",
+          "element_type": "icon",
+          "asset_id": "asset-dep-hell",
+          "linked_segment_id": "seg-doc-1",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-15" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c1-vmheavy",
+          "description": "Heavy VM Overhead",
+          "element_type": "icon",
+          "asset_id": "asset-vm-heavy",
+          "linked_segment_id": "seg-doc-1",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-18" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "2",
+      "text": "Docker packages your code, runtime, system tools, and libraries into a lightweight, standalone unit called a Container.",
+      "subtitle": "Docker packages code, runtime, libraries, and settings into lightweight Containers.",
+      "hold_ms": 10000,
+      "script_segment_ids": ["seg-doc-2"],
+      "layout_hint": "tunnel-diagram",
+      "visual_cues": [
+        {
+          "cue_id": "c2-device",
+          "description": "Application Source",
+          "element_type": "diagram",
+          "asset_id": "asset-app-source",
+          "linked_segment_id": "seg-doc-2",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c2-tunnel",
+          "description": "Docker Container Engine",
+          "element_type": "svg",
+          "asset_id": "asset-docker-container-engine",
+          "linked_segment_id": "seg-doc-2",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "center",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c2-server",
+          "description": "Cloud & Production Host",
+          "element_type": "diagram",
+          "asset_id": "asset-cloud-host",
+          "linked_segment_id": "seg-doc-2",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "3",
+      "text": "It works using Dockerfiles to build Container Images, which are then stored in Docker Hub and run reliably anywhere.",
+      "subtitle": "Dockerfile -> Image -> Container running identically across any environment.",
+      "hold_ms": 11000,
+      "script_segment_ids": ["seg-doc-3"],
+      "layout_hint": "flow-diagram",
+      "visual_cues": [
+        {
+          "cue_id": "c3-node1",
+          "description": "Dockerfile",
+          "element_type": "diagram",
+          "asset_id": "asset-dockerfile-node",
+          "linked_segment_id": "seg-doc-3",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c3-node2",
+          "description": "Docker Image",
+          "element_type": "diagram",
+          "asset_id": "asset-docker-image-node",
+          "linked_segment_id": "seg-doc-3",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-35" },
+          "preferred_region": "center",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c3-node3",
+          "description": "Running Container",
+          "element_type": "diagram",
+          "asset_id": "asset-container-node",
+          "linked_segment_id": "seg-doc-3",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-42" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "4",
+      "text": "Key advantages include rapid deployment, isolated microservices, and massive resource savings over traditional Virtual Machines.",
+      "subtitle": "Rapid deployment, microservice isolation, and efficient resource usage.",
+      "hold_ms": 11000,
+      "script_segment_ids": ["seg-doc-4"],
+      "layout_hint": "cards",
+      "visual_cues": [
+        {
+          "cue_id": "c4-card1",
+          "description": "Fast Deployment Card",
+          "element_type": "icon",
+          "content": "Instant Startup",
+          "asset_id": "asset-card-instant",
+          "linked_segment_id": "seg-doc-4",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "left",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c4-card2",
+          "description": "Microservice Isolation Card",
+          "element_type": "icon",
+          "content": "Isolated Apps",
+          "asset_id": "asset-card-isolation",
+          "linked_segment_id": "seg-doc-4",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-51" },
+          "preferred_region": "center",
+          "importance": "primary"
+        },
+        {
+          "cue_id": "c4-card3",
+          "description": "Lightweight Footprint Card",
+          "element_type": "icon",
+          "content": "Zero VM Waste",
+          "asset_id": "asset-card-lightweight",
+          "linked_segment_id": "seg-doc-4",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-58" },
+          "preferred_region": "right",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "scene_id": "5",
+      "text": "In short, Docker ensures your application runs fast, securely, and consistently wherever you deploy it.",
+      "subtitle": "In short — Docker delivers fast, consistent, and secure deployments everywhere.",
+      "hold_ms": 9000,
+      "script_segment_ids": ["seg-doc-5"],
+      "layout_hint": "outro-checklist",
+      "visual_cues": [
+        {
+          "cue_id": "c5-check1",
+          "description": "Consistent Build & Ship",
+          "element_type": "text",
+          "content": "Consistent Build & Ship",
+          "linked_segment_id": "seg-doc-5",
+          "appearance_trigger": { "type": "segment_start" },
+          "preferred_region": "top",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c5-check2",
+          "description": "Isolated Runtime Environment",
+          "element_type": "text",
+          "content": "Isolated Runtime Environment",
+          "linked_segment_id": "seg-doc-5",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-65" },
+          "preferred_region": "center",
+          "importance": "secondary"
+        },
+        {
+          "cue_id": "c5-check3",
+          "description": "Deploy Anywhere Seamlessly",
+          "element_type": "text",
+          "content": "Deploy Anywhere Seamlessly",
+          "linked_segment_id": "seg-doc-5",
+          "appearance_trigger": { "type": "word", "word_id": "w-doc-69" },
+          "preferred_region": "bottom",
+          "importance": "primary"
+        }
+      ]
+    }
+  ]
+}

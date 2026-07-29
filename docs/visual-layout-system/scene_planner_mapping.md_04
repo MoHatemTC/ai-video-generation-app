@@ -1,0 +1,81 @@
+# Scene Planner → Layout Mapping
+
+How a Scene Planner scene object turns into one of the layouts from
+`02_layout_catalogue.md`.
+
+## Example input
+
+```json
+{
+  "video_id": "...",
+  "scenes": [
+    {
+      "scene_id": "scene_1",
+      "layout": "text_explanation",
+      "script_segments": ["seg_1"],
+      "visual_elements": [
+        {
+          "cue_id": "cue_1",
+          "element_type": "heading",
+          "content": "What is LangChain?",
+          "asset_id": null,
+          "linked_segment_id": "seg_1",
+          "appearance_trigger": {"type": "on_word", "word_id": "word_1"},
+          "preferred_region": "top",
+          "importance": "primary"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Step 1 — Pick the layout
+
+The `layout` field has to match one of the 8 catalogue IDs exactly: `title_intro`,
+`narrator_note`, `text_explanation`, `image_media`, `comparison`, `step_by_step`,
+`key_takeaway`, `closing_cta`. If it's empty or doesn't match anything, default to
+`text_explanation` and log a warning.
+
+## Step 2 — Map elements to fields
+
+Scene Planner sends a flat list of `visual_elements`, each with an `element_type`. Here's how
+those map onto the fields defined in `03_layout_specifications.md`:
+
+| `element_type` | Maps to |
+|---|---|
+| `heading` | `title` / `heading` |
+| `body` | `body_text` / `statement_text` / `takeaway_text` / `closing_message`, depending on the active layout |
+| `subtitle` | `subtitle` (title_intro only) |
+| `image` / `diagram` / `code_snippet` | `media_asset` / `background_media` |
+| `caption` | `caption` (image_media only) |
+| `icon` | `supporting_icon` / `avatar_icon` |
+| `attribution` | `attribution_label` (narrator_note only) |
+| `list_item` | `left_item.points[]` / `right_item.points[]` (comparison only, `preferred_region` says which side) |
+| `step` | `steps[]` (step_by_step only, ordered by array position) |
+| `cta` | `cta_text` (closing_cta only) |
+| `logo` | `logo` (closing_cta only) |
+
+Anything with an `element_type` we don't recognize just gets skipped, with a warning logged —
+one bad element shouldn't take down the whole scene.
+
+## `preferred_region`
+
+This is a hint from the Scene Planner about where content should go. If it conflicts with
+where the layout normally places that field, the layout wins — we want scenes to look
+consistent from video to video, not shift around based on a hint. Log a warning when this
+happens so it's visible for later.
+
+## `importance`
+
+If a scene has more content than the layout can fit, drop or trim `secondary` elements first.
+If it's still over budget, trim `primary` elements too (using the layout's truncation rule).
+Required fields never get dropped outright — they get truncated instead if there's no other
+option.
+
+## `linked_segment_id`
+
+This ties a visual element to a script segment and eventually to timestamps from the
+alignment stage. This lane doesn't use the timestamps directly — that's the sync/animation
+stage's job — but every layout field here needs to pass `linked_segment_id` and
+`appearance_trigger` through unchanged so sync is still possible downstream.
