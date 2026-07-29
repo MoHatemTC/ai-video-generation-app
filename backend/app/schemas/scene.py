@@ -1,6 +1,6 @@
 # backend/app/schemas/scene.py
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Any
 
 
 class AppearanceTrigger(BaseModel):
@@ -20,7 +20,10 @@ class VisualCue(BaseModel):
     asset_id: Optional[str] = None  # reference to external asset
     linked_segment_id: str  # must match a script segment id
     appearance_trigger: AppearanceTrigger
-    preferred_region: Literal["top", "bottom", "left", "right", "center", "background"]
+    preferred_region: Literal[
+        "top", "bottom", "left", "right", "center", "background",
+        "top-left", "top-right", "bottom-left", "bottom-right", "middle"
+    ]
     importance: Literal["primary", "secondary"]
     trigger_time_seconds: Optional[float] = None
 
@@ -46,3 +49,37 @@ class ScenePlan(BaseModel):
     title: str
     total_duration_seconds: float
     scenes: List[Scene]
+
+
+# ---------- Quality Report Schemas ----------
+class RevisionInstruction(BaseModel):
+    instruction_id: str
+    severity: Literal["critical", "major", "minor"]
+    issue_type: Literal[
+        "missing_scene", "missing_segment", "layout_issue",
+        "visual_issue", "consistency_issue", "schema_issue", "educational_issue", "scene_structure"
+    ]
+    target_path: str
+    operation: Literal["replace", "add", "remove"]
+    new_value: Optional[Any] = None
+    reason: str
+    recommendation: str
+
+
+class CategoryScores(BaseModel):
+    script_coverage: int
+    scene_structure: int
+    layout_selection: int
+    visual_relevance: int
+    educational_effectiveness: int
+    consistency: int
+    schema_validity: int
+
+
+class SceneQualityReport(BaseModel):
+    overall_score: int
+    passed: bool
+    category_scores: CategoryScores
+    strengths: List[str]
+    detected_issues: List[str]
+    revision_instructions: List[RevisionInstruction]

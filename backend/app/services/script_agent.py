@@ -1,5 +1,7 @@
 import os
+import json
 import logging
+import re
 from openai import AsyncOpenAI
 from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
 
@@ -9,16 +11,21 @@ async def generate_script(user_prompt: str) -> VideoScriptBlueprint:
     litellm_key = os.getenv("LITELLM_API_KEY")
     litellm_url = os.getenv("LITELLM_BASE_URL")
     gemini_key = os.getenv("GEMINI_API_KEY")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
 
     api_key = None
     base_url = None
     model_name = os.getenv("LITELLM_MODEL", "gemini-2.5-flash")
 
-    # Check if LiteLLM environment is valid and not a placeholder
+    # Determine provider
     if litellm_url and "your_" not in litellm_url and litellm_key and "your_" not in litellm_key:
         api_key = litellm_key
         base_url = litellm_url
         model_name = os.getenv("LITELLM_MODEL", "kimi-k2.5")
+    elif openrouter_key and "your_" not in openrouter_key:
+        api_key = openrouter_key
+        base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+        model_name = os.getenv("OPENROUTER_MODEL", "openrouter/free")
     elif gemini_key and "your_" not in gemini_key:
         api_key = gemini_key
         base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -27,8 +34,8 @@ async def generate_script(user_prompt: str) -> VideoScriptBlueprint:
     if api_key and base_url:
         try:
             client = AsyncOpenAI(
-                api_key=api_key,
-                base_url=base_url
+                api_key=api_key.strip(),
+                base_url=base_url.strip()
             )
             
             system_prompt = """

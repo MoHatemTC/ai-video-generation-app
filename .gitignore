@@ -44,3 +44,6 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Linter configs
+pyrefly.toml

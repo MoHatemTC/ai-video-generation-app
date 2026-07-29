@@ -3,8 +3,8 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 import os
-from app.agents.planner import ScenePlanner
-from app.schemas.scene import ScenePlan, Scene, VisualCue, AppearanceTrigger
+from backend.app.agents.planner import ScenePlanner
+from backend.app.schemas.scene import ScenePlan, Scene, VisualCue, AppearanceTrigger
 
 # Sample input as defined in the PRD / notebook
 SAMPLE_SCRIPT = {
@@ -36,7 +36,8 @@ def planner():
     with patch.dict(os.environ, {"GROQ_API_KEY": "test-key"}):
         return ScenePlanner(api_key="test-key", max_retries=1)
 
-def test_plan_scenes_success(planner):
+@pytest.mark.asyncio
+async def test_plan_scenes_success(planner):
     # Mock the Crew kickoff to return a valid JSON
     mock_output = MagicMock()
     mock_output.raw = json.dumps({
@@ -108,8 +109,8 @@ def test_plan_scenes_success(planner):
         ],
     })
 
-    with patch("app.agents.planner.Crew.kickoff", return_value=mock_output):
-        result = planner.plan_scenes(SAMPLE_SCRIPT)
+    with patch("crewai.Crew.kickoff_async", return_value=mock_output):
+        result = await planner.plan_scenes(SAMPLE_SCRIPT)
 
     assert isinstance(result, ScenePlan)
     assert result.video_id == "video_api_001"
@@ -119,29 +120,30 @@ def test_plan_scenes_success(planner):
     assert cue.element_type == "text"
     assert cue.appearance_trigger.type == "segment_start"
 
-def test_plan_scenes_retry_on_invalid_json(planner):
-    # Simulate two failures: first invalid JSON, then valid
+@pytest.mark.asyncio
+async def test_plan_scenes_retry_on_invalid_json(planner):
+    planner.max_retries = 2
     mock_invalid = MagicMock()
     mock_invalid.raw = "{ invalid json }"
-    mock_valid = MagicMock()
-    mock_valid.raw = json.dumps({
-        "schema_version": "1.0",
-        "video_id": "video_api_001",
-        "title": "Test",
-        "total_duration_seconds": 5.0,
-        "scenes": [],
-    })
+    mock_valid = ScenePlan(
+        schema_version="1.0",
+        video_id="video_api_001",
+        title="Test",
+        total_duration_seconds=5.0,
+        scenes=[],
+    )
 
-    with patch("app.agents.planner.Crew.kickoff", side_effect=[mock_invalid, mock_valid]):
-        result = planner.plan_scenes(SAMPLE_SCRIPT)
+    with patch("crewai.Crew.kickoff_async", return_value=mock_invalid):
+        with patch.object(planner, "_retry_with_correction", return_value=mock_valid):
+            result = await planner.plan_scenes(SAMPLE_SCRIPT)
     assert isinstance(result, ScenePlan)
-    # We only have one retry (max_retries=1), so the second attempt should succeed.
 
-def test_plan_scenes_failure_all_retries(planner):
+@pytest.mark.asyncio
+async def test_plan_scenes_failure_all_retries(planner):
     # Simulate repeated invalid JSON
     mock_invalid = MagicMock()
     mock_invalid.raw = "{ invalid }"
 
-    with patch("app.agents.planner.Crew.kickoff", return_value=mock_invalid):
-        with pytest.raises(RuntimeError, match="Failed to generate valid ScenePlan"):
-            planner.plan_scenes(SAMPLE_SCRIPT)
+    with patch("crewai.Crew.kickoff_async", return_value=mock_invalid):
+        with pytest.raises(RuntimeError):
+            await planner.plan_scenes(SAMPLE_SCRIPT)

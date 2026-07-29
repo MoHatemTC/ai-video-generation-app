@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from services.assets.images import process_scene_elements
+from backend.app.services.assets.images import process_scene_elements
 
 pytestmark = pytest.mark.asyncio(loop_scope="function")
 
