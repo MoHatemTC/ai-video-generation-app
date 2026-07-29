@@ -18,6 +18,7 @@ class VisualCue(BaseModel):
     element_type: Literal["text", "image", "diagram", "icon", "gif", "video", "svg"]
     content: Optional[str] = None  # inline text if element_type == "text"
     asset_id: Optional[str] = None  # reference to external asset
+    asset_url: Optional[str] = None  # resolved URL for asset
     linked_segment_id: str  # must match a script segment id
     appearance_trigger: AppearanceTrigger
     preferred_region: Literal[

@@ -4,7 +4,10 @@ import logging
 from typing import Dict, Any, Optional
 
 from crewai import Agent, Task, Crew, LLM
-import litellm
+try:
+    import litellm
+except ImportError:
+    litellm = None
 
 from ..schemas.scene import ScenePlan, SceneQualityReport, CategoryScores, RevisionInstruction
 from ..config.quality import QualityRubric
@@ -36,8 +39,9 @@ class SceneDirector:
         self.max_retries = max_retries
         self.rubric = rubric or QualityRubric.default()
 
-        litellm.api_base = self.base_url
-        litellm.api_key = self.api_key
+        if litellm is not None:
+            litellm.api_base = self.base_url
+            litellm.api_key = self.api_key
 
         self.llm = LLM(
             model=model_name,

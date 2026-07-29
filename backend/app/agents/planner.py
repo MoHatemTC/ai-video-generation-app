@@ -5,7 +5,10 @@ import asyncio
 from typing import Dict, Any, Optional
 
 from crewai import Agent, Task, Crew, LLM
-import litellm
+try:
+    import litellm
+except ImportError:
+    litellm = None
 
 from ..schemas.scene import ScenePlan, SceneQualityReport
 from ..prompts.planner import (
@@ -97,8 +100,9 @@ class ScenePlanner:
         self.api_key = self.fallback_config["api_key"]
         self.base_url = self.fallback_config["base_url"]
         
-        litellm.api_base = self.base_url
-        litellm.api_key = self.api_key
+        if litellm is not None:
+            litellm.api_base = self.base_url
+            litellm.api_key = self.api_key
         
         self.llm = LLM(
             model=self.model_name,
@@ -133,8 +137,8 @@ class ScenePlanner:
         )
 
     async def plan_scenes(self, script_input: Dict[str, Any]) -> ScenePlan:
-        original_base = litellm.api_base
-        original_key = litellm.api_key
+        original_base = litellm.api_base if litellm is not None else None
+        original_key = litellm.api_key if litellm is not None else None
         try:
             litellm.api_base = self.base_url
             litellm.api_key = self.api_key
