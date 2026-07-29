@@ -1,7 +1,7 @@
 import os
 import asyncio
 import logging
-from supabase import Client
+from supabase import create_client
 
 # --- THE HEALTHY INTEGRATIONS ---
 from backend.app.services.script_agent import generate_script
