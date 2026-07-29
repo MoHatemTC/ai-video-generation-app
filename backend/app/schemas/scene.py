@@ -22,7 +22,7 @@ class VisualCue(BaseModel):
     appearance_trigger: AppearanceTrigger
     preferred_region: Literal["top", "bottom", "left", "right", "center", "background"]
     importance: Literal["primary", "secondary"]
-    trigger_time_seconds: float
+    trigger_time_seconds: Optional[float] = None
 
 
 class Scene(BaseModel):
@@ -33,39 +33,14 @@ class Scene(BaseModel):
     subtitle: Optional[str] = None  # subtitle text for video bar
     hold_ms: Optional[int] = 5000  # delay in ms for fallback / transition timing
     script_segment_ids: List[str]  # one or more segment ids
-    layout_hint: str  # free‑form hint for the animation engine
+    layout_hint: str  # free-form hint for the animation engine
+    template: Optional[Literal["intro", "content_a", "content_b", "outro"]] = None
     visual_cues: List[VisualCue]
 
 
 class ScenePlan(BaseModel):
-    """Top‑level output contract for the Scene Planner."""
+    """Top-level output contract for the Scene Planner."""
 
-from typing import List, Optional, Literal, Any
-from pydantic import BaseModel
-
-class AppearanceTrigger(BaseModel):
-    type: Literal["segment_start", "segment_end", "word"]
-    word_id: Optional[str] = None
-
-class VisualCue(BaseModel):
-    cue_id: str
-    description: str
-    element_type: Literal["text", "image", "diagram", "icon", "gif", "video", "svg"]
-    content: Optional[str] = None
-    asset_id: Optional[str] = None
-    linked_segment_id: str
-    appearance_trigger: AppearanceTrigger
-    preferred_region: Literal["top", "bottom", "left", "right", "center", "background"]
-    importance: Literal["primary", "secondary"]
-
-class Scene(BaseModel):
-    scene_id: str
-    text: str
-    script_segment_ids: List[str]
-    layout_hint: str
-    visual_cues: List[VisualCue]
-
-class ScenePlan(BaseModel):
     schema_version: str = "1.0"
     video_id: str
     title: str

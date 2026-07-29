@@ -1,0 +1,15 @@
+<div class="scene-title"><span>{{ scene.subtitle or scene.text }}</span></div>
+
+<div class="card-grid">
+  {% for cue in scene.visual_cues %}
+  <div class="feature-card glass-panel" style="animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 1.5) }}s">
+    {% if cue.asset_url %}
+    <img src="{{ cue.asset_url | safe }}"
+         alt="{{ cue.description }}"
+         class="cue-asset float-reverse"
+         style="width:64px;height:64px;margin-bottom:12px;" />
+    {% endif %}
+    <h3>{{ cue.content or cue.description }}</h3>
+  </div>
+  {% endfor %}
+</div>

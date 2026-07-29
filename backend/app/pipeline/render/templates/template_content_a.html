@@ -1,0 +1,47 @@
+<div class="scene-title"><span>{{ scene.subtitle or scene.text }}</span></div>
+
+{% set hint = scene.layout_hint | default("generic", true) | lower %}
+
+{% if hint == "flow-diagram" %}
+<div class="flow-container">
+  {% for cue in scene.visual_cues %}
+  {% if not loop.first %}
+  <div class="flow-arrow" style="animation-delay:{{ (cue.trigger_time_seconds | default(loop.index0 * 1.5)) - 0.3 }}s">
+    <svg viewBox="0 0 32 32" style="width:40px;height:40px;" fill="none">
+      <path d="M6 16h20M20 10l6 6-6 6" stroke="var(--c1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  {% endif %}
+  <div class="flow-node glass-panel" style="animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 1.5) }}s">
+    {% if cue.asset_url %}
+    <img src="{{ cue.asset_url | safe }}" class="cue-asset float" style="width:54px;height:54px;" alt="{{ cue.description }}" />
+    {% endif %}
+    <span>{{ cue.content or cue.description }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+{% elif hint == "tunnel-diagram" %}
+<div class="tunnel-diagram">
+  {% for cue in scene.visual_cues %}
+  <div class="endpoint-icon glass-panel" style="padding:24px; animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 1.5) }}s">
+    {% if cue.asset_url %}
+    <img src="{{ cue.asset_url | safe }}" class="cue-asset pulse-soft" style="width:70px;height:70px;margin-bottom:12px;" alt="{{ cue.description }}" />
+    {% endif %}
+    <span>{{ cue.content or cue.description }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="risk-grid">
+  {% for cue in scene.visual_cues %}
+  <div class="risk-card glass-panel" style="animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 1.5) }}s">
+    {% if cue.asset_url %}
+    <img src="{{ cue.asset_url | safe }}" class="cue-asset float-reverse" style="width:48px;height:48px;flex-shrink:0;" alt="{{ cue.description }}" />
+    {% endif %}
+    <span class="risk-label">{{ cue.content or cue.description }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

@@ -12,6 +12,7 @@ from backend.app.schemas.timestamps import AudioTrack
 
 # --- PLUGGING IN OMAR EL DALY'S CODE ---
 from backend.app.services.assets.images import process_scene_elements
+from backend.app.pipeline.render.render_custom import generate_video_html
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -19,13 +20,30 @@ logger = logging.getLogger(__name__)
 # --- DUMMY PLACEHOLDERS (Replace these as teammates finish) ---
 
 def run_planner_crew_sync(script_data: dict) -> dict:
-    # Updated to pass a fake image request so Omar's code actually triggers!
     return {
-        "schema_version": "1.0", 
+        "schema_version": "1.0",
+        "video_id": "demo_job_id",
+        "title": "AI Video Explainer",
+        "total_duration_seconds": 30.0,
         "scenes": [
             {
                 "scene_id": "scene_1",
-                "visual_elements": [{"element_type": "image", "description": "A futuristic computer server"}]
+                "text": "Welcome to our AI video generation platform.",
+                "script_segment_ids": ["seg_1"],
+                "layout_hint": "title-card",
+                "visual_cues": [
+                    {
+                        "cue_id": "cue_1",
+                        "description": "A futuristic computer server",
+                        "element_type": "image",
+                        "asset_id": "image_1",
+                        "linked_segment_id": "seg_1",
+                        "appearance_trigger": {"type": "segment_start"},
+                        "preferred_region": "center",
+                        "importance": "primary",
+                        "trigger_time_seconds": 0.0
+                    }
+                ]
             }
         ]
     }
@@ -36,8 +54,14 @@ def run_composition_crew_sync(scene_data: dict, asset_data: dict, timestamp_data
 def run_animation_crew_sync(composed_data: dict) -> dict:
     return {"status": "animation_map_ready"}
 
-def run_render_crew_sync(animation_data: dict, audio_data: dict) -> str:
-    return "https://storage.example/video.mp4"
+def run_render_crew_sync(scene_data: dict, asset_data: dict) -> str:
+    rendered_html = generate_video_html(scene_data, asset_data)
+    output_dir = os.path.join(os.getcwd(), "data", "renders")
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, "rendered_output.html")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(rendered_html)
+    return output_path
 
 # --- THE MAIN BRAIN ---
 
@@ -125,10 +149,10 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         anim_data = await asyncio.to_thread(run_animation_crew_sync, comp_data)
         supabase.table("videos").update({"animation_data": anim_data}).eq("id", job_id).execute()
 
-        # STAGE 8: Render Engine (WAITING FOR YOUSSEF)
+        # STAGE 8: Render Engine
         current_stage = "render"
         supabase.table("videos").update({"status": "rendering"}).eq("id", job_id).execute()
-        video_url = await asyncio.to_thread(run_render_crew_sync, anim_data, audio_data)
+        video_url = await asyncio.to_thread(run_render_crew_sync, scene_data, asset_data)
         
         # COMPLETION
         supabase.table("videos").update({
@@ -144,3 +168,33 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
             "status": "failed", 
             "error_message": error_message
         }).eq("id", job_id).execute()
+
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    import sys
+
+    load_dotenv()
+
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
+
+    prompt = sys.argv[1] if len(sys.argv) > 1 else "How black holes work in space"
+
+    if not supabase_url or not supabase_key:
+        logger.error("SUPABASE_URL and SUPABASE_KEY must be set in your .env file.")
+        sys.exit(1)
+
+    supabase_client = create_client(supabase_url, supabase_key)
+
+    logger.info(f"Creating video job for prompt: '{prompt}'")
+    insert_res = supabase_client.table("videos").insert({"prompt": prompt, "status": "pending"}).execute()
+
+    if not insert_res.data or len(insert_res.data) == 0:
+        logger.error("Failed to create video job in Supabase.")
+        sys.exit(1)
+
+    job_id = insert_res.data[0]["id"]
+    logger.info(f"Job created with ID: {job_id}")
+
+    asyncio.run(process_video_job(job_id, prompt, supabase_client))

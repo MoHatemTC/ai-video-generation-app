@@ -29,7 +29,7 @@ except ImportError:
 def normalize_model_name(raw_name: str) -> str:
     """Normalize user configured model name for CrewAI Google Gemini integration."""
     if not raw_name:
-        return "gemini/gemini-3.5-flash"
+        return "gemini/gemini-3.5-flash-lite"
     clean = raw_name.strip()
     if clean.startswith("gemini/") or clean.startswith("google/"):
         return clean

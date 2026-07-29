@@ -323,5 +323,44 @@
         "source": "generated",
         "license": "open-source",
         "registered_at": "2026-07-16T20:34:29.279896+00:00"
+    },
+    {
+        "video_id": "demo_job_id",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "A futuristic computer server",
+        "prompt": "Illustration showing: A futuristic computer server",
+        "url": "https://supabase-storage.local/assets/42839e37-89d3-4071-9023-381f8e9ee2ab.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-27T18:26:21.955699+00:00"
+    },
+    {
+        "video_id": "demo_job_id",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "A futuristic computer server",
+        "prompt": "Illustration showing: A futuristic computer server",
+        "url": "https://supabase-storage.local/assets/122bbb8d-0925-43ff-92a4-755736375699.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-27T18:31:13.961694+00:00"
+    },
+    {
+        "video_id": "demo_job_id",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "A futuristic computer server",
+        "prompt": "Illustration showing: A futuristic computer server",
+        "url": "https://supabase-storage.local/assets/3dbe327b-aa94-426f-82af-3a933b46b1a2.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-28T21:55:31.887333+00:00"
     }
 ]

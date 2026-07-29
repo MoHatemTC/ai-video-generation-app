@@ -23,16 +23,17 @@ class AssetService:
                 json.dump([], f)
 
     def _get_llm_client(self):
-        # This dynamic import can help avoid issues where the LLM client
-        # might not be available in all environments (like CI/CD).
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            return ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=self.gemini_api_key)
-        except ImportError:
-            logger.warning("langchain_google_genai not found. Using a fallback LLM for CrewAI.")
-            # Fallback to a mock or a different available LLM if needed
-            from langchain_community.llms.fake import FakeListLLM
-            return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
+            return ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", api_key=self.gemini_api_key)
+        except Exception:
+            try:
+                from langchain_community.llms.fake import FakeListLLM
+                return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
+            except Exception:
+                logger.warning("Langchain modules not installed. Returning None for fallback prompt.")
+                return None
+
 
 
     def register_asset_in_storage(self, asset: AssetItem, video_id: str) -> str:
@@ -66,33 +67,34 @@ class AssetService:
     async def resolve_visual_cue(
         self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str
     ) -> AssetItem:
-        llm_client = self._get_llm_client()
-
-        design_director = Agent(
-            role="Educational Visual Design Director",
-            goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
-            backstory="You are an expert visual layout designer at Sprints Video Studio.",
-            verbose=False,
-            allow_delegation=False,
-            llm=llm_client
-        )
-
-        refinement_task = Task(
-            description=f"Refine this cue into an image generator prompt: '{cue}'",
-            expected_output="A single optimized prompt string.",
-            agent=design_director
-        )
-
-        my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+        optimized_prompt = f"Illustration showing: {cue}"
 
         try:
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, my_crew.kickoff)
-            # Handle different possible result structures from CrewAI/LangChain
-            optimized_prompt = result if isinstance(result, str) else str(result).strip()
+            llm_client = self._get_llm_client()
+            if llm_client is not None:
+                design_director = Agent(
+                    role="Educational Visual Design Director",
+                    goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
+                    backstory="You are an expert visual layout designer at Sprints Video Studio.",
+                    verbose=False,
+                    allow_delegation=False,
+                    llm=llm_client
+                )
+
+                refinement_task = Task(
+                    description=f"Refine this cue into an image generator prompt: '{cue}'",
+                    expected_output="A single optimized prompt string.",
+                    agent=design_director
+                )
+
+                my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(None, my_crew.kickoff)
+                if result:
+                    optimized_prompt = result if isinstance(result, str) else str(result).strip()
         except Exception as e:
-            logger.error(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
-            optimized_prompt = f"Illustration showing: {cue}"
+            logger.warning(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
 
         asset = AssetItem(
             asset_id=asset_id,
@@ -109,6 +111,7 @@ class AssetService:
         self.register_asset_in_storage(asset, video_id)
         return asset
 
+
 async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
     video_id = scene_data.get("video_id", "default_video_id")
     scenes = scene_data.get("scenes", [])
@@ -118,9 +121,9 @@ async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
 
     for scene in scenes:
         scene_id = scene.get("scene_id", "")
-        visual_elements = scene.get("visual_elements", [])
+        cues_or_elements = scene.get("visual_cues") or scene.get("visual_elements") or []
 
-        for element in visual_elements:
+        for element in cues_or_elements:
             if element.get("element_type") == "image" or "asset_id" in element:
                 fallback_id = f"image_{asset_index}"
                 asset_id = element.get("asset_id") or fallback_id
