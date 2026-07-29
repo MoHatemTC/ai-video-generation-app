@@ -6,13 +6,14 @@ import supabase
 
 # --- THE HEALTHY INTEGRATIONS ---
 from backend.app.services.script_agent import generate_script
-from backend.app.services.tts_provider import GeminiTTSProvider
+from backend.app.services.audio import generate_voiceover
 from backend.app.services.alignment import AlignmentService
 from backend.app.schemas.timestamps import AudioTrack
 from backend.app.services.assets.images import process_scene_elements
 from backend.app.agents.planner import ScenePlanner
+from backend.app.agents.director import SceneDirector
 
-from backend.app.config.model_config import get_planner_config
+from backend.app.config.model_config import get_planner_config, get_fallback_config
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         script_data = await generate_script(prompt)
         # Handle both Pydantic models and raw dicts gracefully
         script_dict = script_data.model_dump() if hasattr(script_data, 'model_dump') else script_data
+        script_dict["video_id"] = job_id
         supabase.table("videos").update({"script_data": script_dict}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 1 Complete!")
         #################################################################################################
@@ -38,34 +40,60 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         current_stage = "planner"
         supabase.table("videos").update({"status": "planning_scenes"}).eq("id", job_id).execute()
         
-        # 1. Instantiate the agent first!
+        # 1. Instantiate the agents with primary and fallback configs
+        primary_config = get_planner_config()
+        fallback_config = get_fallback_config()
+        
         planner_agent = ScenePlanner(
-            model_name=get_planner_config()["model_name"],
-            api_key=get_planner_config()["api_key"],
-            base_url=get_planner_config()["base_url"]
+            model_name=primary_config["model_name"],
+            api_key=primary_config["api_key"],
+            base_url=primary_config["base_url"],
+            fallback_config=fallback_config
         )
         
-        # 2. Now await the scene planning
+        director_agent = SceneDirector(
+            model_name=primary_config["model_name"],
+            api_key=primary_config["api_key"],
+            base_url=primary_config["base_url"],
+            fallback_config=fallback_config
+        )
+        
+        # 2. Plan the scenes
         scene_plan_pydantic = await planner_agent.plan_scenes(script_dict)
         
-        # 3. Convert to dict and save
+        # 3. Evaluate Quality
+        logger.info(f"[{job_id}] Evaluating scene plan quality...")
+        quality_report = await director_agent.evaluate(script_dict, scene_plan_pydantic)
+        
+        # 4. Revise if failed
+        if not quality_report.passed:
+            logger.info(f"[{job_id}] Quality check failed (Score: {quality_report.overall_score}). Revising...")
+            scene_plan_pydantic = await planner_agent.revise_scenes(
+                script_dict, scene_plan_pydantic, quality_report
+            )
+            logger.info(f"[{job_id}] Revision complete.")
+        else:
+            logger.info(f"[{job_id}] Quality check passed (Score: {quality_report.overall_score})!")
+        
+        # 5. Convert to dict and save
         scene_data_dict = scene_plan_pydantic.model_dump()
         supabase.table("videos").update({"scene_data": scene_data_dict}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 2 Complete!")
 
         # --- STAGE 3: Audio Generation ---
+        current_stage = "audio"
         supabase.table("videos").update({"status": "generating_audio"}).eq("id", job_id).execute()
-        tts_provider = GeminiTTSProvider()
-        full_script_text = " ".join([seg.narrator_text for seg in script_data.segments])
-        audio_bytes = await tts_provider.generate_speech(full_script_text)
+        # Use AudioService for caching and Supabase upload
+        audio_metadata = await generate_voiceover(
+            script_data=script_dict,
+            supabase_client=supabase
+        )
         
-        audio_path = f"data/{job_id}.wav"
-        os.makedirs("data", exist_ok=True)
-        with open(audio_path, "wb") as f:
-            f.write(audio_bytes)
-            
+        # Keep local path reference for AlignmentService (Stage 4)
+        audio_path = audio_metadata.get("local_path", audio_metadata.get("audio_file_path", ""))
+        
         supabase.table("videos").update({
-            "audio_metadata": {"audio_file_path": audio_path}
+            "audio_metadata": audio_metadata
         }).eq("id", job_id).execute()
 
         # STAGE 4: Alignment / WhisperX (Osama)
@@ -93,7 +121,7 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         logger.info(f"[{job_id}] Running Stage 5: Asset Service...")
         
         # FIX: Pass the dictionary (scene_data_dict), NOT the Pydantic object!
-        asset_data = await process_scene_elements(scene_data_dict)
+        asset_data = await process_scene_elements(scene_data_dict, supabase_client=supabase)
         
         supabase.table("videos").update({"asset_data": asset_data}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 5 Complete!")

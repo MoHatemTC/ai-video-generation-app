@@ -6,12 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import the router we just created
 from backend.routes.video_routes import router as video_router
 
-import litellm
-litellm.model_alias_map = {
-    "planner-model": os.getenv("PLANNER_MODEL", "gemini/gemini-3.5-flash")
-}
-
 load_dotenv()
+
+# Setup litellm settings
+import litellm
+litellm.drop_params = True
 
 # Read the frontend URL from environment, default to localhost for development
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
@@ -25,7 +24,15 @@ app = FastAPI(
 # Add CORS Middleware to allow React frontend to connect
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],  # Changed from ["*"] to [FRONTEND_URL]
+    allow_origins=[
+        FRONTEND_URL,
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

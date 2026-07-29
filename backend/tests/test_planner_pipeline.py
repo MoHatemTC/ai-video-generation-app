@@ -3,9 +3,9 @@ import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.agents.planner import ScenePlanner
-from app.agents.director import SceneDirector
-from app.schemas.scene import ScenePlan, SceneQualityReport
+from backend.app.agents.planner import ScenePlanner
+from backend.app.agents.director import SceneDirector
+from backend.app.schemas.scene import ScenePlan, SceneQualityReport
 
 # Sample input (same as before)
 SAMPLE_SCRIPT = {
@@ -61,6 +61,25 @@ async def test_full_pipeline():
                         "importance": "primary",
                     }
                 ],
+            },
+            {
+                "scene_id": "scene_2",
+                "text": "API stands for Application Programming Interface.",
+                "script_segment_ids": ["seg_2"],
+                "layout_hint": "text_with_diagram",
+                "visual_cues": [
+                    {
+                        "cue_id": "cue_2",
+                        "description": "API definition",
+                        "element_type": "text",
+                        "content": "Application Programming Interface",
+                        "asset_id": "asset_api_icon",
+                        "linked_segment_id": "seg_2",
+                        "appearance_trigger": {"type": "segment_start", "word_id": None},
+                        "preferred_region": "center",
+                        "importance": "primary",
+                    }
+                ],
             }
         ],
     }
@@ -100,23 +119,24 @@ async def test_full_pipeline():
 
     # Patch the Crew.kickoff_async method for both planner and director
     # We'll patch the Crew class itself to return a custom result
+    mock_resp = MagicMock()
+    mock_resp.choices = [MagicMock(message=MagicMock(content=json.dumps(mock_report)))]
+
     with patch("crewai.Crew.kickoff_async", new_callable=AsyncMock) as mock_kickoff:
-        # First call (planner) -> returns mock_plan
-        # Second call (director) -> returns mock_report
-        # Third call (revision) -> returns mock_revised
-        mock_kickoff.side_effect = [
-            MagicMock(raw=json.dumps(mock_plan)),
-            MagicMock(raw=json.dumps(mock_report)),
-            MagicMock(raw=json.dumps(mock_revised)),
-        ]
+        with patch("litellm.acompletion", new_callable=AsyncMock) as mock_acompletion:
+            mock_kickoff.side_effect = [
+                MagicMock(raw=json.dumps(mock_plan)),
+                MagicMock(raw=json.dumps(mock_revised)),
+            ]
+            mock_acompletion.return_value = mock_resp
 
-        planner = ScenePlanner(api_key="dummy", base_url="http://fake")
-        director = SceneDirector(api_key="dummy", base_url="http://fake")
+            planner = ScenePlanner(api_key="dummy", base_url="http://fake")
+            director = SceneDirector(api_key="dummy", base_url="http://fake")
 
-        # Run pipeline
-        scene_plan = await planner.plan_scenes(SAMPLE_SCRIPT)
-        quality_report = await director.evaluate(SAMPLE_SCRIPT, scene_plan)
-        revised_plan = await planner.revise_scenes(SAMPLE_SCRIPT, scene_plan, quality_report)
+            # Run pipeline
+            scene_plan = await planner.plan_scenes(SAMPLE_SCRIPT)
+            quality_report = await director.evaluate(SAMPLE_SCRIPT, scene_plan)
+            revised_plan = await planner.revise_scenes(SAMPLE_SCRIPT, scene_plan, quality_report)
 
         # Assertions
         assert isinstance(scene_plan, ScenePlan)

@@ -13,7 +13,10 @@ class VisualCue(BaseModel):
     asset_id: Optional[str] = None
     linked_segment_id: str
     appearance_trigger: AppearanceTrigger
-    preferred_region: Literal["top", "bottom", "left", "right", "center", "background"]
+    preferred_region: Literal[
+        "top", "bottom", "left", "right", "center", "background",
+        "top-left", "top-right", "bottom-left", "bottom-right", "middle"
+    ]
     importance: Literal["primary", "secondary"]
 
 class Scene(BaseModel):
@@ -36,7 +39,7 @@ class RevisionInstruction(BaseModel):
     severity: Literal["critical", "major", "minor"]
     issue_type: Literal[
         "missing_scene", "missing_segment", "layout_issue",
-        "visual_issue", "consistency_issue", "schema_issue", "educational_issue"
+        "visual_issue", "consistency_issue", "schema_issue", "educational_issue", "scene_structure"
     ]
     target_path: str
     operation: Literal["replace", "add", "remove"]

@@ -2,10 +2,25 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
-from app.agents.director import SceneDirector
-from app.schemas.scene import ScenePlan, SceneQualityReport
+from backend.app.agents.director import SceneDirector
+from backend.app.schemas.scene import ScenePlan, SceneQualityReport
 
-# ... sample script and plan ...
+SAMPLE_SCRIPT = {
+    "video_id": "video_api_001",
+    "title": "Understanding APIs",
+    "total_duration_seconds": 9.2,
+    "segments": [
+        {"id": "seg_1", "text": "Welcome to our course on APIs.", "visual_cue": "Intro title"},
+    ],
+}
+
+scene_plan_mock = ScenePlan(
+    schema_version="1.0",
+    video_id="video_api_001",
+    title="Understanding APIs",
+    total_duration_seconds=9.2,
+    scenes=[]
+)
 
 @pytest.mark.asyncio
 async def test_director_evaluate():
@@ -25,8 +40,10 @@ async def test_director_evaluate():
         ]
     }
 
-    with patch("crewai.Crew.kickoff_async", new_callable=AsyncMock) as mock_kickoff:
-        mock_kickoff.return_value = MagicMock(raw=json.dumps(mock_llm_response))
+    mock_resp = MagicMock()
+    mock_resp.choices = [MagicMock(message=MagicMock(content=json.dumps(mock_llm_response)))]
+    with patch("litellm.acompletion", new_callable=AsyncMock) as mock_acompletion:
+        mock_acompletion.return_value = mock_resp
         director = SceneDirector(api_key="dummy", base_url="http://fake")
         report = await director.evaluate(SAMPLE_SCRIPT, scene_plan_mock)
 

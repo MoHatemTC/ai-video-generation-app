@@ -3,6 +3,8 @@ import uuid
 import logging
 import json
 import asyncio
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from crewai import Agent, Task, Crew
@@ -48,7 +50,7 @@ class AssetService:
         return asset.url
 
     async def resolve_visual_cue(
-        self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str
+        self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str, supabase_client: Any = None
     ) -> AssetItem:
         
         # Pull the model string from the .env file, default to openrouter/free
@@ -74,7 +76,7 @@ class AssetService:
 
             my_crew = Crew(agents=[design_director], tasks=[refinement_task])
             
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(None, my_crew.kickoff)
             optimized_prompt = result if isinstance(result, str) else str(result).strip()
             
@@ -83,12 +85,51 @@ class AssetService:
             # Fallback gracefully keeps the pipeline alive!
             optimized_prompt = f"Illustration showing: {cue}"
 
+        # Live Pollinations URL
+        image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(optimized_prompt)}"
+
+        # If Supabase client is provided, download the pollinations image and upload it to Supabase Storage!
+        if supabase_client is not None:
+            try:
+                req = urllib.request.Request(
+                    image_url,
+                    headers={'User-Agent': 'Mozilla/5.0'}
+                )
+                loop = asyncio.get_running_loop()
+                def fetch_bytes():
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        return response.read()
+                
+                logger.info(f"Downloading generated image from Pollinations for asset {asset_id}...")
+                file_bytes = await loop.run_in_executor(None, fetch_bytes)
+
+                # Store with path format: {video_id}/{asset_id}.png
+                storage_key = f"{video_id}/{asset_id}.png"
+                logger.info(f"Uploading image to Supabase assets bucket as {storage_key}...")
+                
+                # Upload to "assets" bucket
+                supabase_client.storage.from_("assets").upload(
+                    storage_key,
+                    file_bytes,
+                    {"content-type": "image/png", "upsert": "true"},
+                )
+                
+                # Retrieve the public URL
+                public_url_response = supabase_client.storage.from_("assets").get_public_url(storage_key)
+                if isinstance(public_url_response, dict):
+                    image_url = public_url_response.get("publicUrl") or public_url_response.get("public_url")
+                else:
+                    image_url = public_url_response
+                logger.info(f"Image uploaded successfully! Public URL: {image_url}")
+            except Exception as upload_err:
+                logger.error(f"Failed to upload image {asset_id} to Supabase. Falling back to direct URL. Error: {upload_err}", exc_info=True)
+
         asset = AssetItem(
             asset_id=asset_id,
             scene_reference=scene_id,
             cue_reference=cue_id,
             asset_type="image",
-            url=f"https://supabase-storage.local/assets/{uuid.uuid4()}.png",
+            url=image_url,
             prompt=optimized_prompt,
             source="generated",
             asset_license="open-source",
@@ -98,7 +139,7 @@ class AssetService:
         self.register_asset_in_storage(asset, video_id)
         return asset
 
-async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
+async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: Any = None) -> Dict[str, Any]:
     video_id = scene_data.get("video_id", "default_video_id")
     scenes = scene_data.get("scenes", [])
     service = AssetService()
@@ -107,10 +148,11 @@ async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
 
     for scene in scenes:
         scene_id = scene.get("scene_id", "")
-        visual_elements = scene.get("visual_elements", [])
+        visual_cues = scene.get("visual_cues", [])
 
-        for element in visual_elements:
-            if element.get("element_type") == "image" or "asset_id" in element:
+        for element in visual_cues:
+            element_type = element.get("element_type")
+            if element_type != "text" or "asset_id" in element:
                 fallback_id = f"image_{asset_index}"
                 asset_id = element.get("asset_id") or fallback_id
                 
@@ -119,7 +161,8 @@ async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
                     scene_id=scene_id,
                     cue_id=element.get("cue_id", ""),
                     asset_id=asset_id,
-                    video_id=video_id
+                    video_id=video_id,
+                    supabase_client=supabase_client
                 )
                 tasks.append(task)
                 asset_index += 1
