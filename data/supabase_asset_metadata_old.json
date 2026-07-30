@@ -1,0 +1,50 @@
+[
+    {
+        "video_id": "sprint_2_demo_video",
+        "asset_id": "asset_img_01",
+        "scene_id": "scene_1",
+        "cue_id": "cue_101",
+        "element": "a friendly robot waving hello",
+        "prompt": ", a friendly robot waving hello",
+        "url": "https://image.pollinations.ai/prompt/%2C%20a%20friendly%20robot%20waving%20hello?width=1280&height=720&model=flux&nologo=true",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-30T16:52:46.655442+00:00",
+        "prompt_used": ", a friendly robot waving hello",
+        "resolution": "1920x1080",
+        "aspect_ratio": "16:9"
+    },
+    {
+        "video_id": "sprint_2_demo_video",
+        "asset_id": "asset_img_02",
+        "scene_id": "scene_2",
+        "cue_id": "cue_102",
+        "element": "flowchart showing data moving from a client laptop to a cloud server",
+        "prompt": ", flowchart showing data moving from a client laptop to a cloud server",
+        "url": "https://image.pollinations.ai/prompt/%2C%20flowchart%20showing%20data%20moving%20from%20a%20client%20laptop%20to%20a%20cloud%20server?width=1280&height=720&model=flux&nologo=true",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-30T16:52:48.330253+00:00",
+        "prompt_used": ", flowchart showing data moving from a client laptop to a cloud server",
+        "resolution": "1920x1080",
+        "aspect_ratio": "16:9"
+    },
+    {
+        "video_id": "sprint_2_demo_video",
+        "asset_id": "asset_img_03",
+        "scene_id": "scene_3",
+        "cue_id": "cue_103",
+        "element": "a bright glowing lightbulb symbolizing an innovative idea",
+        "prompt": ", a bright glowing lightbulb symbolizing an innovative idea",
+        "url": "https://image.pollinations.ai/prompt/%2C%20a%20bright%20glowing%20lightbulb%20symbolizing%20an%20innovative%20idea?width=1280&height=720&model=flux&nologo=true",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-30T16:52:49.720068+00:00",
+        "prompt_used": ", a bright glowing lightbulb symbolizing an innovative idea",
+        "resolution": "1920x1080",
+        "aspect_ratio": "16:9"
+    }
+]

@@ -45,9 +45,7 @@ class AssetService:
                 # 'openai/' instructs CrewAI to send OpenAI format to base_url
                 # 'gemini/gemini-2.5-flash' satisfies proxy 'gemini/*' team permission
                 llm = LLM(
-                    model="openai/gemini/gemini-2.5-flash",
-                    api_key=litellm_api_key,
-                    base_url=litellm_api_base,
+                    model="openai/gemini/gemini-2.5-flash",                    base_url=litellm_api_base,
                 )
                 logger.info("✅ Successfully connected to Sprints.ai LiteLLM server.")
                 return llm
@@ -60,9 +58,7 @@ class AssetService:
             logger.info("Attempting to connect to Google Gemini...")
             try:
                 llm = LLM(
-                    model="gemini/gemini-2.5-flash",
-                    api_key=gemini_api_key
-                )
+                    model="gemini/gemini-2.5-flash",                )
                 logger.info("✅ Successfully connected to Google Gemini.")
                 return llm
             except Exception as e:
@@ -126,7 +122,9 @@ class AssetService:
         return template.format(negative_prompts=negative_prompts, cue=cue)
 
     def _build_fallback_prompt(self, cue: str) -> str:
-        """Builds a high-quality, fallback prompt with mandatory guardrails."""
+        """
+        Builds a high-quality, fallback prompt with mandatory guardrails.
+        """
         # Mandatory guardrails to ensure high-quality, consistent output
         guardrails = "flat 2d vector illustration, clean lines, educational, isolated background, no text, no shadows"
         

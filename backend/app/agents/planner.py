@@ -51,7 +51,7 @@ def extract_scene_plan_from_raw(raw: str) -> Optional[ScenePlan]:
 class ScenePlanner:
     def __init__(
         self,
-        model_name: str = "kimi-k2.5",
+        model_name: str = "gemini/gemini-1.5-flash-latest",
         temperature: float = 0.2,
         max_tokens: int = 4096,
         api_key: Optional[str] = None,
