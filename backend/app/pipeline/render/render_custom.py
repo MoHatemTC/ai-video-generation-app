@@ -358,15 +358,12 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
   animation:fadeUp .5s ease both;animation-delay:1.2s;
 }}
 
-/* ─── Subtitle / Transcript Bar ─── */
+/* ─── Subtitle / Transcript Bar (Hidden) ─── */
 .scene-transcript{{
-  position:absolute;bottom:0;left:0;right:0;min-height:70px;
-  background:rgba(255,255,255,0.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border-top:1px solid rgba(226,232,240,0.8);color:var(--text);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 32px;z-index:40;
+  display:none !important;
 }}
-.transcript-title{{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--c1);margin-bottom:4px;font-weight:800;}}
-.transcript-text{{font-size:15px;font-weight:500;text-align:center;line-height:1.5;max-width:800px;color:var(--muted);}}
+.transcript-title{{display:none;}}
+.transcript-text{{display:none;}}
 
 /* ─── Start & Replay Overlays ─── */
 #start-overlay{{position:absolute;inset:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}}
@@ -442,8 +439,7 @@ def _build_shared_js(scenes_data_json: str) -> str:
   function speakCurrentScene(){{
     const s = scenesData[currentIdx];
     const minHold = s.holdMs || 8000;
-    // Show narration text in subtitle bar
-    if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
+    const isIntro = (s.template === 'intro' || s.template === 'template_intro' || currentIdx === 0);
 
     return new Promise(resolve => {{
       let speechDone = false;
@@ -465,8 +461,8 @@ def _build_shared_js(scenes_data_json: str) -> str:
         finish();
       }}, minHold);
 
-      // TTS narration — scene only advances when BOTH speech ends AND holdMs elapses
-      if(synth && s.narration){{
+      // TTS narration — intro scene is completely silent (no speaking)
+      if(synth && s.narration && !isIntro){{
         try{{
           synth.cancel();
           const utter = new SpeechSynthesisUtterance(s.narration);
@@ -489,7 +485,7 @@ def _build_shared_js(scenes_data_json: str) -> str:
           finish();
         }}
       }} else {{
-        // No TTS available — just use holdMs
+        // Intro scene or no TTS available — silent hold
         speechDone = true;
         finish();
       }}
@@ -692,10 +688,7 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
 
 {scenes_html}
 
-    <div class="scene-transcript">
-       <div class="transcript-title">Transcript</div>
-       <div class="transcript-text" id="subtitle-text"></div>
-    </div>
+
 
     <div id="start-overlay">
       <h1>{title}</h1>

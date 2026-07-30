@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 
 from crewai import Agent, Task, Crew, LLM
 try:
-    import litellm
+    import litellm  # type: ignore
 except ImportError:
     litellm = None
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class SceneDirector:
     def __init__(
         self,
-        model_name: str = "kimi-k2.5",
+        model_name: str = "gemini/gemini-3.5-flash-lite",
         temperature: float = 0.2,
         max_tokens: int = 4096,
         api_key: Optional[str] = None,

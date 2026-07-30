@@ -17,19 +17,19 @@ async def generate_script(user_prompt: str) -> VideoScriptBlueprint:
     base_url = None
     model_name = os.getenv("LITELLM_MODEL", "gemini-2.5-flash")
 
-    # Determine provider
-    if litellm_url and "your_" not in litellm_url and litellm_key and "your_" not in litellm_key:
+    # Determine provider — prioritize Gemini API key when available
+    if gemini_key and "your_" not in gemini_key:
+        api_key = gemini_key
+        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        model_name = "gemini-3.5-flash-lite"
+    elif litellm_url and "your_" not in litellm_url and litellm_key and "your_" not in litellm_key:
         api_key = litellm_key
         base_url = litellm_url
-        model_name = os.getenv("LITELLM_MODEL", "kimi-k2.5")
+        model_name = os.getenv("LITELLM_MODEL", "gemini-3.5-flash-lite")
     elif openrouter_key and "your_" not in openrouter_key:
         api_key = openrouter_key
         base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         model_name = os.getenv("OPENROUTER_MODEL", "openrouter/free")
-    elif gemini_key and "your_" not in gemini_key:
-        api_key = gemini_key
-        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        model_name = "gemini-3.5-flash-lite"
 
     if api_key and base_url:
         try:

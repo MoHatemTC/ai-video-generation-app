@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>What is Docker? — Explainer Video</title>
+<title>What is LangChain? — Explainer Video</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 
 :root{
-  --c1:#0ea5e9; --c2:#06b6d4; --c3:#38bdf8;
+  --c1:#22c55e; --c2:#eab308; --c3:#4ade80;
   --bg:#f8fafc; --paper-bg:#f2efe9; --text:#0f172a; --muted:#475569;
   --glass-bg:rgba(255,255,255,0.7); --glass-border:rgba(255,255,255,0.9);
   --shadow:0 12px 40px rgba(0,0,0,0.06);
@@ -240,12 +240,15 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
   animation:fadeUp .5s ease both;animation-delay:1.2s;
 }
 
-/* ─── Subtitle / Transcript Bar (Hidden) ─── */
+/* ─── Subtitle / Transcript Bar ─── */
 .scene-transcript{
-  display:none !important;
+  position:absolute;bottom:0;left:0;right:0;min-height:70px;
+  background:rgba(255,255,255,0.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(226,232,240,0.8);color:var(--text);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 32px;z-index:40;
 }
-.transcript-title{display:none;}
-.transcript-text{display:none;}
+.transcript-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--c1);margin-bottom:4px;font-weight:800;}
+.transcript-text{font-size:15px;font-weight:500;text-align:center;line-height:1.5;max-width:800px;color:var(--muted);}
 
 /* ─── Start & Replay Overlays ─── */
 #start-overlay{position:absolute;inset:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
@@ -294,7 +297,7 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 
   <div class="middle-row">
     <div class="left-title">
-      What is Docker?
+      What is LangChain?
     </div>
 
     <div class="cloud-wrap">
@@ -317,9 +320,9 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
       <div class="cloud-content">
         
         
-          <img src="https://api.iconify.design/logos/docker-icon.svg" alt="Hero Icon" class="cue-asset float" style="width:70px; height:70px; object-fit:contain;" />
+          <img src="https://api.iconify.design/logos/langchain.svg" alt="Hero Icon" class="cue-asset float" style="width:70px; height:70px; object-fit:contain;" />
         
-        <div class="word">Docker?</div>
+        <div class="word">LangChain?</div>
       </div>
     </div>
   </div>
@@ -336,57 +339,57 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
     </div>
 
     <div class="scene" id="scene-1" data-layout-hint="risk-diagram" data-template="content_a">
-<div class="scene-title"><span>Before Docker — applications broke in production due to OS dependencies.</span></div>
+<div class="scene-title"><span>Standalone LLMs lack real-time data, memory, and external tool integration.</span></div>
 
 <div class="hero-layout">
   <div class="hero-image-wrap">
     
     
-    <img src="https://api.iconify.design/lucide/laptop.svg?color=%233b82f6"
-         alt="Developer Machine"
+    <img src="https://api.iconify.design/lucide/cpu.svg?color=%233b82f6"
+         alt="User Prompt & LLM"
          class="cue-asset hero-img float"
          onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
     
   </div>
   <div class="hero-text-wrap">
-    <p class="scene-narration">Before Docker, developers constantly faced the infamous problem: It works on my machine, but breaks in production due to OS differences.</p>
+    <p class="scene-narration">Standalone LLMs are powerful, but they lack real-time data, memory of past chats, and the ability to run external tools.</p>
     
     <div class="supporting-icons">
       
       <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
         
-        <img src="https://api.iconify.design/lucide/git-commit-horizontal.svg?color=%23ef4444" alt="Broken deployment paths" class="cue-asset"
+        <img src="https://api.iconify.design/mdi/alert-circle-outline.svg?color=%23ef4444" alt="Disconnected capability paths" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>Broken deployment paths</span>
+        <span>Disconnected capability paths</span>
       </div>
       
       <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
         
-        <img src="https://api.iconify.design/lucide/monitor-x.svg?color=%23ef4444" alt="OS Mismatch" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/database-off.svg?color=%23ef4444" alt="No Live Data limitation" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>OS Mismatch</span>
+        <span>No Live Data limitation</span>
       </div>
       
       <div class="supporting-icon glass-panel" style="animation-delay:3.15s">
         
-        <img src="https://api.iconify.design/lucide/git-pull-request-closed.svg?color=%23ef4444" alt="Dependency Conflict" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/brain-circuit.svg?color=%23ef4444" alt="No Memory limitation" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>Dependency Conflict</span>
+        <span>No Memory limitation</span>
       </div>
       
       <div class="supporting-icon glass-panel" style="animation-delay:4.15s">
         
-        <img src="https://api.iconify.design/lucide/hard-drive.svg?color=%23f59e0b" alt="Heavy VM Overhead" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/wrench.svg?color=%23ef4444" alt="No Tools limitation" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>Heavy VM Overhead</span>
+        <span>No Tools limitation</span>
       </div>
       
     </div>
@@ -396,39 +399,39 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
     </div>
 
     <div class="scene" id="scene-2" data-layout-hint="tunnel-diagram" data-template="content_a">
-<div class="scene-title"><span>Docker packages code, runtime, libraries, and settings into lightweight Containers.</span></div>
+<div class="scene-title"><span>LangChain bridges LLMs with custom data sources, APIs, and external tools.</span></div>
 
 <div class="hero-layout">
   <div class="hero-image-wrap">
     
     
-    <img src="https://api.iconify.design/lucide/code-2.svg?color=%233b82f6"
-         alt="Application Source"
+    <img src="https://api.iconify.design/lucide/layout-grid.svg?color=%233b82f6"
+         alt="User Application"
          class="cue-asset hero-img float"
          onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
     
   </div>
   <div class="hero-text-wrap">
-    <p class="scene-narration">Docker packages your code, runtime, system tools, and libraries into a lightweight, standalone unit called a Container.</p>
+    <p class="scene-narration">LangChain is an open-source framework that connects language models to custom data sources, APIs, and computation tools.</p>
     
     <div class="supporting-icons">
       
       <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
         
-        <img src="https://api.iconify.design/logos/docker-icon.svg" alt="Docker Container Engine" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/git-merge.svg?color=%233b82f6" alt="LangChain Chain Tunnel" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>Docker Container Engine</span>
+        <span>LangChain Chain Tunnel</span>
       </div>
       
       <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
         
-        <img src="https://api.iconify.design/lucide/cloud.svg?color=%233b82f6" alt="Cloud & Production Host" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/server.svg?color=%233b82f6" alt="LLM & Knowledge Base" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>Cloud & Production Host</span>
+        <span>LLM & Knowledge Base</span>
       </div>
       
     </div>
@@ -438,39 +441,39 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
     </div>
 
     <div class="scene" id="scene-3" data-layout-hint="flow-diagram" data-template="content_a">
-<div class="scene-title"><span>Dockerfile -> Image -> Container running identically across any environment.</span></div>
+<div class="scene-title"><span>Chains combine Prompts, Models, Memory, and Vector Stores into pipelines.</span></div>
 
 <div class="hero-layout">
   <div class="hero-image-wrap">
     
     
-    <img src="https://api.iconify.design/lucide/file-code.svg?color=%233b82f6"
-         alt="Dockerfile"
+    <img src="https://api.iconify.design/lucide/message-square-code.svg?color=%233b82f6"
+         alt="User Prompt Node"
          class="cue-asset hero-img float"
          onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
     
   </div>
   <div class="hero-text-wrap">
-    <p class="scene-narration">It works using Dockerfiles to build Container Images, which are then stored in Docker Hub and run reliably anywhere.</p>
+    <p class="scene-narration">It works by chaining together Prompts, Models, Memory, and Vector Indexes into seamless automated pipelines.</p>
     
     <div class="supporting-icons">
       
       <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
         
-        <img src="https://api.iconify.design/lucide/package.svg?color=%233b82f6" alt="Docker Image" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/Workflow.svg?color=%233b82f6" alt="LangChain Engine Node" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>Docker Image</span>
+        <span>LangChain Engine Node</span>
       </div>
       
       <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
         
-        <img src="https://api.iconify.design/lucide/box.svg?color=%2322c55e" alt="Running Container" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/database.svg?color=%233b82f6" alt="Vector DB & LLM Node" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
         
-        <span>Running Container</span>
+        <span>Vector DB & LLM Node</span>
       </div>
       
     </div>
@@ -480,38 +483,37 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
     </div>
 
     <div class="scene" id="scene-4" data-layout-hint="cards" data-template="content_b">
-<div class="scene-title"><span>Rapid deployment, microservice isolation, and efficient resource usage.</span></div>
+<div class="scene-title"><span>Build custom RAG Chatbots, Document Search, and autonomous AI Agents.</span></div>
 
 <div class="centered-hero">
   
-  
   <div class="centered-hero-img-wrap">
-    <img src="https://api.iconify.design/lucide/zap.svg?color=%23eab308"
-         alt="Fast Deployment Card"
+    <img src="https://api.iconify.design/lucide/file-text.svg?color=%233b82f6"
+         alt="RAG Chatbots Card"
          class="cue-asset centered-hero-img float-reverse"
          onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=140&height=140';" />
   </div>
   
-  <p class="scene-narration centered">Key advantages include rapid deployment, isolated microservices, and massive resource savings over traditional Virtual Machines.</p>
+  <p class="scene-narration centered">With LangChain, you can build custom RAG chatbots, automated document search engines, and autonomous AI agents.</p>
   
   <div class="supporting-icons centered">
     
     <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
       
-      <img src="https://api.iconify.design/lucide/shield-check.svg?color=%233b82f6" alt="Microservice Isolation Card" class="cue-asset"
+      <img src="https://api.iconify.design/lucide/bot.svg?color=%233b82f6" alt="AI Agents Card" class="cue-asset"
            style="width:40px;height:40px;"
            onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
       
-      <span>Isolated Apps</span>
+      <span>AI Agents</span>
     </div>
     
     <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
       
-      <img src="https://api.iconify.design/lucide/feather.svg?color=%2322c55e" alt="Lightweight Footprint Card" class="cue-asset"
+      <img src="https://api.iconify.design/lucide/search.svg?color=%233b82f6" alt="Doc Search Card" class="cue-asset"
            style="width:40px;height:40px;"
            onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
       
-      <span>Zero VM Waste</span>
+      <span>Doc Search</span>
     </div>
     
   </div>
@@ -520,9 +522,9 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
     </div>
 
     <div class="scene" id="scene-5" data-layout-hint="outro-checklist" data-template="outro">
-<h2 class="scene-title" style="margin-bottom:24px;"><span>In short — Docker delivers fast, consistent, and secure deployments everywhere.</span></h2>
+<h2 class="scene-title" style="margin-bottom:24px;"><span>In short — LangChain turns raw LLMs into powerful, action-driven AI apps.</span></h2>
 
-<p class="scene-narration centered" style="margin-bottom:28px;">In short, Docker ensures your application runs fast, securely, and consistently wherever you deploy it.</p>
+<p class="scene-narration centered" style="margin-bottom:28px;">In short, LangChain turns simple language models into intelligent, action-oriented AI applications.</p>
 
 <div class="checklist">
   
@@ -530,32 +532,35 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
     <div class="check-circle">
       <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
     </div>
-    <span>Consistent Build & Ship</span>
+    <span>Connect Custom Data</span>
   </div>
   
   <div class="check-item" style="animation-delay:1.15s">
     <div class="check-circle">
       <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
     </div>
-    <span>Isolated Runtime Environment</span>
+    <span>Add Persistent Memory</span>
   </div>
   
   <div class="check-item" style="animation-delay:2.15s">
     <div class="check-circle">
       <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
     </div>
-    <span>Deploy Anywhere Seamlessly</span>
+    <span>Execute Autonomous Actions</span>
   </div>
   
 </div>
 
-<div class="final-badge">What is Docker?</div>
+<div class="final-badge">What is LangChain?</div>
     </div>
 
-
+    <div class="scene-transcript">
+       <div class="transcript-title">Transcript</div>
+       <div class="transcript-text" id="subtitle-text"></div>
+    </div>
 
     <div id="start-overlay">
-      <h1>What is Docker?</h1>
+      <h1>What is LangChain?</h1>
       <button id="start-btn">&#9654; &nbsp;Start Presentation</button>
       <button id="replay-btn">&#8635; &nbsp;Replay</button>
     </div>
@@ -566,7 +571,7 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 <script>
 
 (function(){
-  const scenesData = [{"id": "scene-0", "narration": "What is Docker? Let's explore how containerization changed software deployment forever.", "subtitle": "What is Docker? Containerization for modern software development.", "holdMs": 7000}, {"id": "scene-1", "narration": "Before Docker, developers constantly faced the infamous problem: It works on my machine, but breaks in production due to OS differences.", "subtitle": "Before Docker — applications broke in production due to OS dependencies.", "holdMs": 10400}, {"id": "scene-2", "narration": "Docker packages your code, runtime, system tools, and libraries into a lightweight, standalone unit called a Container.", "subtitle": "Docker packages code, runtime, libraries, and settings into lightweight Containers.", "holdMs": 10000}, {"id": "scene-3", "narration": "It works using Dockerfiles to build Container Images, which are then stored in Docker Hub and run reliably anywhere.", "subtitle": "Dockerfile -> Image -> Container running identically across any environment.", "holdMs": 11000}, {"id": "scene-4", "narration": "Key advantages include rapid deployment, isolated microservices, and massive resource savings over traditional Virtual Machines.", "subtitle": "Rapid deployment, microservice isolation, and efficient resource usage.", "holdMs": 11000}, {"id": "scene-5", "narration": "In short, Docker ensures your application runs fast, securely, and consistently wherever you deploy it.", "subtitle": "In short — Docker delivers fast, consistent, and secure deployments everywhere.", "holdMs": 9000}];
+  const scenesData = [{"id": "scene-0", "narration": "What is LangChain? Let's find out how to build powerful AI applications.", "subtitle": "What is LangChain? Build powerful AI applications with LLMs.", "holdMs": 7000}, {"id": "scene-1", "narration": "Standalone LLMs are powerful, but they lack real-time data, memory of past chats, and the ability to run external tools.", "subtitle": "Standalone LLMs lack real-time data, memory, and external tool integration.", "holdMs": 10000}, {"id": "scene-2", "narration": "LangChain is an open-source framework that connects language models to custom data sources, APIs, and computation tools.", "subtitle": "LangChain bridges LLMs with custom data sources, APIs, and external tools.", "holdMs": 10000}, {"id": "scene-3", "narration": "It works by chaining together Prompts, Models, Memory, and Vector Indexes into seamless automated pipelines.", "subtitle": "Chains combine Prompts, Models, Memory, and Vector Stores into pipelines.", "holdMs": 11000}, {"id": "scene-4", "narration": "With LangChain, you can build custom RAG chatbots, automated document search engines, and autonomous AI agents.", "subtitle": "Build custom RAG Chatbots, Document Search, and autonomous AI Agents.", "holdMs": 11000}, {"id": "scene-5", "narration": "In short, LangChain turns simple language models into intelligent, action-oriented AI applications.", "subtitle": "In short — LangChain turns raw LLMs into powerful, action-driven AI apps.", "holdMs": 8000}];
 
   let currentIdx = 0, isPlaying = false, stepTimer = null;
   const sceneEls = scenesData.map(s => document.getElementById(s.id));
@@ -615,7 +620,8 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
   function speakCurrentScene(){
     const s = scenesData[currentIdx];
     const minHold = s.holdMs || 8000;
-    const isIntro = (s.template === 'intro' || s.template === 'template_intro' || currentIdx === 0);
+    // Show narration text in subtitle bar
+    if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
 
     return new Promise(resolve => {
       let speechDone = false;
@@ -637,8 +643,8 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
         finish();
       }, minHold);
 
-      // TTS narration — intro scene is completely silent (no speaking)
-      if(synth && s.narration && !isIntro){
+      // TTS narration — scene only advances when BOTH speech ends AND holdMs elapses
+      if(synth && s.narration){
         try{
           synth.cancel();
           const utter = new SpeechSynthesisUtterance(s.narration);
@@ -661,7 +667,7 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
           finish();
         }
       } else {
-        // Intro scene or no TTS available — silent hold
+        // No TTS available — just use holdMs
         speechDone = true;
         finish();
       }

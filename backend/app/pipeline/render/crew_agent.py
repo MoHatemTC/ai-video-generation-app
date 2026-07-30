@@ -183,7 +183,7 @@ def generate_template_with_crewai(scene_plan_dict: dict) -> str:
         print("[NOTICE] crewai not installed. Using smart fallback template.")
         return generate_fallback_custom_template(scene_plan_dict)
 
-    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash")
+    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash-lite")
     model_name = normalize_model_name(raw_model)
     print(f"[AGENT] Initializing CrewAI with Gemini LLM ({model_name})...")
 

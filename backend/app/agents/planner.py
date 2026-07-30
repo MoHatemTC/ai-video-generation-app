@@ -43,15 +43,26 @@ def create_fallback_scene_plan(script_input: Dict[str, Any]) -> ScenePlan:
                 template=template_name,
                 visual_cues=[
                     VisualCue(
-                        cue_id=f"cue_{idx}",
-                        description=visual_cue_text,
+                        cue_id=f"cue_{idx}_1",
+                        description=f"Primary visual: {visual_cue_text}",
                         element_type="image",
-                        asset_id=f"image_{idx}",
+                        asset_id=f"image_{idx}_1",
                         linked_segment_id=seg_id,
                         appearance_trigger=AppearanceTrigger(type="segment_start"),
                         preferred_region="center",
                         importance="primary",
                         trigger_time_seconds=0.2
+                    ),
+                    VisualCue(
+                        cue_id=f"cue_{idx}_2",
+                        description=f"Secondary icon: key concept for {seg_id}",
+                        element_type="icon",
+                        asset_id=f"image_{idx}_2",
+                        linked_segment_id=seg_id,
+                        appearance_trigger=AppearanceTrigger(type="segment_start"),
+                        preferred_region="bottom-right",
+                        importance="secondary",
+                        trigger_time_seconds=0.6
                     )
                 ]
             )
@@ -114,7 +125,7 @@ def extract_scene_plan_from_raw(raw: str) -> Optional[ScenePlan]:
 class ScenePlanner:
     def __init__(
         self,
-        model_name: str = "kimi-k2.5",
+        model_name: str = "gemini/gemini-3.5-flash-lite",
         temperature: float = 0.2,
         max_tokens: int = 4096,
         api_key: Optional[str] = None,

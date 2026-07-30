@@ -74,7 +74,7 @@ async def test_process_video_job_success(
     prompt = "Test prompt"
     
     # 4. Run the pipeline
-    await process_video_job(job_id, prompt, mock_supabase)
+    await process_video_job(prompt, job_id=job_id, supabase_client=mock_supabase)
 
     # 5. Verify it marked the job as completed
     completed_call = {"status": "completed", "video_url": "data/renders/test-job-123.html"}
@@ -103,7 +103,7 @@ async def test_process_video_job_failure(mock_generate_script):
     job_id = "test-job-fail"
     prompt = "Fail prompt"
     
-    await process_video_job(job_id, prompt, mock_supabase)
+    await process_video_job(prompt, job_id=job_id, supabase_client=mock_supabase)
     
     # Verify the failure was caught and logged to Supabase safely with the stage name
     failed_call = {"status": "failed", "error_message": "[script_generation] LiteLLM API Timeout!"}
