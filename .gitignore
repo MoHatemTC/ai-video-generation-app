@@ -45,8 +45,12 @@ Thumbs.db
 *.log
 logs/
 
+# Linter configs
+pyrefly.toml
+
 # Demo scripts
 run_asset_pipeline.py
 
 #folder
 docs/Product requirement documents/
+

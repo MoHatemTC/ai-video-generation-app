@@ -1,33 +1,74 @@
 import os
+import json
+import logging
+import re
 from openai import AsyncOpenAI
-from backend.app.schemas.script import VideoScriptBlueprint
+from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
 
-async def generate_script(user_prompt: str) -> VideoScriptBlueprint:
-    # Initialize the client INSIDE the function to avoid import crashes.
-    # LiteLLM uses the OpenAI SDK format, we just point it to the Sprints URL!
-    client = AsyncOpenAI(
-        api_key=os.getenv("LITELLM_API_KEY"),
-        base_url=os.getenv("LITELLM_BASE_URL")
-    )
-    
-    # Use the model defined in your .env
-    model_name = os.getenv("LITELLM_MODEL", "kimi-k2.5")
-    
-    system_prompt = """
-    You are an expert educational video scriptwriter. 
-    Convert the user's educational topic into a highly engaging, well-structured video script.
-    You must divide the script into visual segments and narrator dialogue.
+logger = logging.getLogger(__name__)
+
+async def generate_script(prompt: str) -> VideoScriptBlueprint:
     """
+    Generates a script using OpenRouter's free tier auto-router.
+    Includes a fallback in case the free model truncates the JSON.
+    """
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    model_name = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip()
     
-    # We use the beta.chat.completions.parse method to force the AI 
-    # to return a perfect JSON matching your VideoScriptBlueprint schema
-    response = await client.beta.chat.completions.parse(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Create an educational video about: {user_prompt}"}
-        ],
-        response_format=VideoScriptBlueprint,
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY environment variable is missing.")
+
+    client = AsyncOpenAI(
+        api_key=api_key.strip(),
+        base_url=base_url.strip()
     )
-    
-    return response.choices[0].message.parsed
+
+    system_prompt = (
+        "You are an expert educational scriptwriter. "
+        "Write a short, structured e-learning script for the provided topic. "
+        "Keep it brief to avoid token limits. "
+        "You MUST return ONLY a raw JSON object matching this schema: "
+        "{\"title\": \"string\", \"target_audience\": \"string\", \"estimated_total_duration\": int, "
+        "\"segments\": [{\"segment_id\": int, \"narrator_text\": \"string\", \"visual_cue\": \"string\"}]}"
+    )
+
+    try:
+        response = await client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Topic: {prompt}"}
+            ],
+            temperature=0.7
+        )
+        
+        raw_content = response.choices[0].message.content.strip()
+            
+        # JSON Extractor Magnet
+        json_match = re.search(r'\{.*\}', raw_content, re.DOTALL)
+        clean_json = json_match.group(0) if json_match else raw_content
+            
+        return VideoScriptBlueprint.model_validate_json(clean_json)
+        
+    except Exception as e:
+        logger.warning(f"AI truncated the JSON or failed ({str(e)}). Reverting to fallback script.")
+        
+        # If the free AI breaks, we use this fallback to keep the pipeline alive!
+        return VideoScriptBlueprint(
+            title=f"Introduction to {prompt}",
+            target_audience="Beginners",
+            estimated_total_duration=30,
+            segments=[
+                ScriptSegment(
+                    segment_id=1, 
+                    narrator_text=f"Welcome to this quick lesson on {prompt}.", 
+                    visual_cue="Introductory title screen with bold text."
+                ),
+                ScriptSegment(
+                    segment_id=2, 
+                    narrator_text="Let's explore the main concepts and how they work in the real world.", 
+                    visual_cue="An engaging, colorful diagram explaining the topic."
+                )
+            ]
+        )

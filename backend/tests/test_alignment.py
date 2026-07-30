@@ -17,7 +17,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import pytest
 from unittest.mock import patch, MagicMock
 from backend.app.schemas.timestamps import AudioTrack, TimestampMap
-from backend.app.services.assets.alignment import AlignmentService
+from backend.app.services.alignment import AlignmentService
+
 
 # Updated to match the shared team contract and integer IDs
 from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
@@ -27,8 +28,8 @@ MOCK_SCRIPT = VideoScriptBlueprint(
     target_audience="Beginner",
     estimated_total_duration=10,
     segments=[
-        ScriptSegment(segment_id=1, text="Hello world.", visual_cues="fade in", duration_seconds=1),
-        ScriptSegment(segment_id=2, text="This is a test.", visual_cues="show chart", duration_seconds=1)
+        ScriptSegment(segment_id=1, narrator_text="Hello world.", visual_cue="fade in", duration_seconds=1),
+        ScriptSegment(segment_id=2, narrator_text="This is a test.", visual_cue="zoom out", duration_seconds=1.5),
     ]
 )
 

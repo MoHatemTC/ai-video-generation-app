@@ -4,6 +4,9 @@ import logging
 import json
 import asyncio
 import re
+import urllib.parse
+import urllib.request
+
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from dotenv import load_dotenv
@@ -11,8 +14,6 @@ from crewai import Agent, Task, Crew, LLM
 from backend.app.schemas.asset import AssetItem
 
 # Pydantic V2 Migration warnings are expected from CrewAI and can be ignored for now.
-# The UserWarning about 'model_name' is also from a dependency and not a blocker.
-
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -24,7 +25,6 @@ FORBIDDEN_PROMPT_KEYWORDS = ["text", "gradients", "shadows", "watermarks", "3d",
 
 class AssetService:
     def __init__(self):
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
         self.local_storage_db = "data/supabase_asset_metadata.json"
         os.makedirs(os.path.dirname(self.local_storage_db), exist_ok=True)
         if not os.path.exists(self.local_storage_db):
@@ -119,56 +119,106 @@ Based on the original cue, generate a single, optimized prompt string that stric
         return template.format(negative_prompts=negative_prompts, cue=cue)
 
     async def resolve_visual_cue(
-        self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str
+        self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str, supabase_client: Any = None
     ) -> AssetItem:
         if os.getenv("ASSET_REMOTE_LLM_ENABLED", "1").lower() in {"0", "false", "no"}:
             optimized_prompt = self._build_fallback_prompt(cue)
         else:
-            llm_client = self._get_llm_client()
-
-            design_director = Agent(
-                role="Educational Visual Design Director",
-                goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
-                backstory="You are an expert visual layout designer at Sprints Video Studio.",
-                verbose=False,
-                allow_delegation=False,
-                llm=llm_client
-            )
-
-            prompt_template = self._build_prompt_template(cue)
-
-            refinement_task = Task(
-                description=prompt_template,
-                expected_output="A single, optimized prompt string ready for an image generation model.",
-                agent=design_director
-            )
-
-            my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+            llm_client = None
+            try:
+                # Prefer a real client object when available
+                llm_client = self._get_llm_client()
+            except Exception as e:
+                logger.warning(f"Error creating LLM client ({e}). Will attempt Crew fallback or string model.")
 
             try:
-                loop = asyncio.get_event_loop()
+                # Build an agent/crew using whatever LLM handle we can provide.
+                # If llm_client is a string (incoming branch pattern) Crew/Agent implementations
+                # should accept either the object or a model identifier; both forms are supported.
+                design_director = Agent(
+                    role="Educational Visual Design Director",
+                    goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
+                    backstory="You are an expert visual layout designer at Sprints Video Studio.",
+                    verbose=False,
+                    allow_delegation=False,
+                    llm=llm_client or os.getenv("OPENROUTER_MODEL", "openrouter/free")
+                )
+
+                prompt_template = self._build_prompt_template(cue)
+
+                refinement_task = Task(
+                    description=prompt_template,
+                    expected_output="A single, optimized prompt string ready for an image generation model.",
+                    agent=design_director
+                )
+
+                my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+
+                loop = asyncio.get_running_loop()
                 result = await loop.run_in_executor(None, my_crew.kickoff)
                 refined_prompt = str(result).strip() if result else ""
 
                 # Perform automated quality evaluation. If it fails, fall back to a safer prompt.
-                if self._evaluate_prompt_quality(refined_prompt):
+                if refined_prompt and self._evaluate_prompt_quality(refined_prompt):
                     optimized_prompt = refined_prompt
                 else:
-                    logger.warning(
-                        f"Refined prompt '{refined_prompt}' failed quality check. "
-                        f"Reverting to basic prompt for cue: '{cue}'"
-                    )
+                    if refined_prompt:
+                        logger.warning(
+                            f"Refined prompt '{refined_prompt}' failed quality check. Reverting to basic prompt for cue: '{cue}'"
+                        )
                     optimized_prompt = self._build_fallback_prompt(cue)
 
             except Exception as e:
-                logger.error(f"Asset refinement task failed ({e}). Reverting to basic prompt.")
+                logger.warning(f"Asset refinement task failed ({e}). Reverting to basic prompt.")
                 optimized_prompt = self._build_fallback_prompt(cue)
+
+        # Construct Pollinations image URL from the final optimized prompt
+        try:
+            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(optimized_prompt)}"
+        except Exception:
+            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(str(optimized_prompt))}"
+
+        # If Supabase client is provided, download the pollinations image and upload it to Supabase Storage
+        if supabase_client is not None:
+            try:
+                req = urllib.request.Request(
+                    image_url,
+                    headers={'User-Agent': 'Mozilla/5.0'}
+                )
+                loop = asyncio.get_running_loop()
+
+                def fetch_bytes():
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        return response.read()
+
+                logger.info(f"Downloading generated image from Pollinations for asset {asset_id}...")
+                file_bytes = await loop.run_in_executor(None, fetch_bytes)
+
+                # Store with path format: {video_id}/{asset_id}.png
+                storage_key = f"{video_id}/{asset_id}.png"
+                logger.info(f"Uploading image to Supabase assets bucket as {storage_key}...")
+
+                supabase_client.storage.from_("assets").upload(
+                    storage_key,
+                    file_bytes,
+                    {"content-type": "image/png", "upsert": "true"},
+                )
+
+                public_url_response = supabase_client.storage.from_("assets").get_public_url(storage_key)
+                if isinstance(public_url_response, dict):
+                    image_url = public_url_response.get("publicUrl") or public_url_response.get("public_url")
+                else:
+                    image_url = public_url_response
+                logger.info(f"Image uploaded successfully! Public URL: {image_url}")
+            except Exception as upload_err:
+                logger.error(f"Failed to upload image {asset_id} to Supabase. Falling back to direct URL. Error: {upload_err}", exc_info=True)
+
         asset = AssetItem(
             asset_id=asset_id,
             scene_reference=scene_id,
             cue_reference=cue_id,
             asset_type="image",
-            url=f"https://supabase-storage.local/assets/{uuid.uuid4()}.png",
+            url=image_url,
             prompt=optimized_prompt,
             source="generated",
             asset_license="open-source",
@@ -181,30 +231,38 @@ Based on the original cue, generate a single, optimized prompt string that stric
         self.register_asset_in_storage(asset, video_id)
         return asset
 
-async def process_scene_elements(scene_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Processes scene data to resolve all visual cues into concrete assets.
-    This function acts as the main entry point for the asset generation stage,
-    consuming the output from the Scene Planner and producing a structured
-    asset list for the downstream Animation Engine.
-    """
-    video_id = scene_data.get("video_id", "unspecified_video")
+async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: Any = None) -> Dict[str, Any]:
+    video_id = scene_data.get("video_id", "default_video_id")
+
     scenes = scene_data.get("scenes", [])
     service = AssetService()
     tasks = []
     asset_index = 1
 
     for scene in scenes:
-        scene_id = scene.get("scene_id", "unspecified_scene")
-        visual_elements = scene.get("visual_elements", [])
+        scene_id = scene.get("scene_id", "")
+        visual_elements = scene.get("visual_elements", scene.get("visual_cues", []))
 
         for element in visual_elements:
-            # Per test_assets.py and upstream contracts, we process elements that have an asset_id.
-            if element.get("element_type") == "image" or "asset_id" in element:
-                cue_text = element.get("description", element.get("text", "No cue provided"))
-                asset_id = element.get("asset_id") or f"asset_{asset_index}"
-                cue_id = element.get("cue_id") or f"cue_{asset_index}"
-                tasks.append(service.resolve_visual_cue(cue_text, scene_id, cue_id, asset_id, video_id))
+            element_type = element.get("element_type")
+            # Skip pure text elements unless they provide an explicit asset_id
+            if element_type == "text" and "asset_id" not in element:
+                continue
+
+            asset_id = element.get("asset_id") or f"asset_{asset_index}"
+            cue_text = element.get("description", element.get("text", ""))
+            cue_id = element.get("cue_id") or f"cue_{asset_index}"
+
+            task = service.resolve_visual_cue(
+                cue=cue_text,
+                scene_id=scene_id,
+                cue_id=cue_id,
+                asset_id=asset_id,
+                video_id=video_id,
+                supabase_client=supabase_client
+            )
+            tasks.append(task)
+
                 asset_index += 1
 
     if not tasks:

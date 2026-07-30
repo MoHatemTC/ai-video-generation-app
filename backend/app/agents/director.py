@@ -6,9 +6,9 @@ from typing import Dict, Any, Optional
 from crewai import Agent, Task, Crew, LLM
 import litellm
 
-from ..schemas.scene import ScenePlan, SceneQualityReport, CategoryScores
+from ..schemas.scene import ScenePlan, SceneQualityReport, CategoryScores, RevisionInstruction
 from ..config.quality import QualityRubric
-from ..validators import validate_scene_plan
+from ..validators.scene_validator import validate_scene_plan
 from ..prompts.planner import SYSTEM_PROMPT, DIRECTOR_TASK_TEMPLATE, RETRY_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,9 @@ class SceneDirector:
         base_url: Optional[str] = "https://learner-os.sprints.ai/litellm",
         max_retries: int = 3,
         rubric: Optional[QualityRubric] = None,
+        fallback_config: Optional[Dict[str, Any]] = None,
     ):
+        self.fallback_config = fallback_config
         self.api_key = api_key or os.getenv("LITELLM_API_KEY")
         if not self.api_key:
             raise ValueError("LITELLM_API_KEY must be set in environment or passed.")
@@ -56,6 +58,28 @@ class SceneDirector:
             llm=self.llm,
             verbose=False,
         )
+
+    def _switch_to_fallback(self) -> bool:
+        if not self.fallback_config:
+            return False
+            
+        logger.warning("Primary LLM failed in Director. Switching to fallback config...")
+        self.model_name = self.fallback_config["model_name"]
+        self.api_key = self.fallback_config["api_key"]
+        self.base_url = self.fallback_config["base_url"]
+        
+        litellm.api_base = self.base_url
+        litellm.api_key = self.api_key
+        
+        self.llm = LLM(
+            model=self.model_name,
+            api_key=self.api_key,
+            temperature=self.temperature,
+            is_litellm=True,
+            base_url=self.base_url,
+        )
+        self.agent.llm = self.llm
+        return True
 
     def _build_task(self, script_input: Dict[str, Any], scene_plan: ScenePlan) -> Task:
         description = DIRECTOR_TASK_TEMPLATE.format(
@@ -96,13 +120,19 @@ class SceneDirector:
         llm_strengths = []
         llm_instructions = []
         try:
-            crew = Crew(
-                agents=[self.agent],
-                tasks=[self._build_task(script_input, scene_plan)],
-                verbose=False,
+            task = self._build_task(script_input, scene_plan)
+            messages = [
+                {"role": "system", "content": self.agent.backstory},
+                {"role": "user", "content": task.description + "\n\n" + task.expected_output}
+            ]
+            response = await litellm.acompletion(
+                model=self.llm.model,
+                messages=messages,
+                api_key=self.llm.api_key,
+                base_url=self.llm.base_url,
+                temperature=self.llm.temperature or 0.2
             )
-            result = await crew.kickoff_async()
-            raw = result.raw
+            raw = response.choices[0].message.content
             # Clean markdown if present
             raw = raw.strip()
             if raw.startswith("```json"):
@@ -114,7 +144,14 @@ class SceneDirector:
             llm_strengths = data.get("strengths", [])
             llm_instructions = data.get("revision_instructions", [])
         except Exception as e:
-            logger.warning(f"LLM evaluation failed, using only deterministic checks: {e}")
+            logger.error(f"LLM evaluation failed (API or JSON error): {e}")
+            if self._switch_to_fallback():
+                # We do a simple recursive retry once if we switch
+                # Since we don't have a loop here, we can just call evaluate again
+                # But to avoid infinite recursion, we unset the fallback_config before doing so
+                self.fallback_config = None
+                return await self.evaluate(script_input, scene_plan)
+            logger.warning("Falling back to deterministic checks only.")
 
         # 4. Merge instructions (auto + LLM)
         # Ensure instruction IDs are unique

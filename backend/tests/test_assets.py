@@ -1,7 +1,10 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from backend.app.services.assets.images import process_scene_elements, AssetService
 from backend.app.schemas.asset import AssetItem
+
+pytestmark = pytest.mark.asyncio(loop_scope="function")
+
 
 @pytest.mark.asyncio
 @patch('backend.app.services.assets.images.AssetService')
