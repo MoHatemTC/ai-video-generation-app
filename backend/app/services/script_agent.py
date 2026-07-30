@@ -1,33 +1,30 @@
-import os
-from openai import AsyncOpenAI
-from backend.app.schemas.script import VideoScriptBlueprint
+import logging
+from backend.app.schemas.script import VideoScriptBlueprint, ScriptSegment
 
-async def generate_script(user_prompt: str) -> VideoScriptBlueprint:
-    # Initialize the client INSIDE the function to avoid import crashes.
-    # LiteLLM uses the OpenAI SDK format, we just point it to the Sprints URL!
-    client = AsyncOpenAI(
-        api_key=os.getenv("LITELLM_API_KEY"),
-        base_url=os.getenv("LITELLM_BASE_URL")
-    )
-    
-    # Use the model defined in your .env
-    model_name = os.getenv("LITELLM_MODEL", "kimi-k2.5")
-    
-    system_prompt = """
-    You are an expert educational video scriptwriter. 
-    Convert the user's educational topic into a highly engaging, well-structured video script.
-    You must divide the script into visual segments and narrator dialogue.
+logger = logging.getLogger(__name__)
+
+async def generate_script(prompt: str) -> VideoScriptBlueprint:
     """
+    Generates a script using a hardcoded fallback.
+    The OpenRouter call has been disabled to avoid API key errors.
+    """
+    logger.warning("OpenRouter is disabled by default. Reverting to fallback script.")
     
-    # We use the beta.chat.completions.parse method to force the AI 
-    # to return a perfect JSON matching your VideoScriptBlueprint schema
-    response = await client.beta.chat.completions.parse(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Create an educational video about: {user_prompt}"}
-        ],
-        response_format=VideoScriptBlueprint,
+    # We use this fallback to keep the pipeline alive without needing an external AI for script generation.
+    return VideoScriptBlueprint(
+        title=f"Introduction to {prompt}",
+        target_audience="Beginners",
+        estimated_total_duration=30,
+        segments=[
+            ScriptSegment(
+                segment_id=1, 
+                narrator_text=f"Welcome to this quick lesson on {prompt}.", 
+                visual_cue="Introductory title screen with bold text."
+            ),
+            ScriptSegment(
+                segment_id=2, 
+                narrator_text="Let's explore the main concepts and how they work in the real world.", 
+                visual_cue="An engaging, colorful diagram explaining the topic."
+            )
+        ]
     )
-    
-    return response.choices[0].message.parsed

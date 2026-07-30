@@ -2,12 +2,11 @@ import os
 import logging
 import uuid
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
 from backend.app.pipeline.orchestrator import process_video_job
-from backend.app.schemas.video import VideoRequest, JobResponse 
+from backend.app.schemas.video import VideoRequest, JobResponse
 
 logger = logging.getLogger(__name__)
 
@@ -85,33 +84,3 @@ async def get_status(job_id: str):
         # Safely log and mask any unexpected database crashes
         logger.error(f"Failed to fetch status for job {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="An internal server error occurred while fetching the status.")
-
-@router.get("/api/data/{job_id}/{stage_column}")
-async def get_stage_data(job_id: str, stage_column: str):
-    """
-    Lightweight endpoint to fetch the JSON payload for a specific stage 
-    ONLY when the frontend asks for it, saving massive database bandwidth.
-    """
-    try:
-        uuid.UUID(job_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid job_id format.")
-        
-    # Security: Prevent SQL injection by strictly whitelisting allowed columns
-    allowed_columns = [
-        "script_data", "scene_data", "audio_metadata", "timestamp_data", 
-        "asset_data", "composition_data", "animation_data"
-    ]
-    
-    if stage_column not in allowed_columns:
-        raise HTTPException(status_code=400, detail="Invalid data column requested.")
-        
-    try:
-        response = supabase.table("videos").select(stage_column).eq("id", job_id).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Job not found")
-            
-        return response.data[0]
-    except Exception as e:
-        logger.error(f"Failed to fetch {stage_column} for job {job_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error fetching stage data.")

@@ -226,7 +226,7 @@ async def generate_voiceover(
     and it will default to GeminiTTSProvider with no Supabase upload.
     """
     segments = script_data.get("segments", [])
-    full_narration = " ".join(segment["text"] for segment in segments)
+    full_narration = " ".join(segment.get("narrator_text", "") for segment in segments)
 
     request = TTSRequest(
         video_id=script_data.get("video_id"),
@@ -242,9 +242,13 @@ async def generate_voiceover(
 
     track = await service.generate_audio_track(request)
 
+    cache_key = service._generate_cache_key(request)
+    local_path = os.path.join(service.storage_dir, f"{cache_key}.wav")
+
     return {
         "video_id": track.video_id,
         "audio_file_path": track.audio_file_path,
         "duration_seconds": track.duration_seconds,
         "voice_used": track.voice_used,
+        "local_path": local_path,
     }

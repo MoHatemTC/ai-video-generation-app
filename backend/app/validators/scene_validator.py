@@ -21,7 +21,7 @@ def validate_scene_plan(
         - List of detected issue strings (for the report)
     """
     # --- 1. Script Coverage ---
-    segment_ids = {seg["id"] for seg in script.get("segments", [])}
+    segment_ids = {str(seg.get("segment_id", seg.get("id"))) for seg in script.get("segments", [])}
     referenced_ids = set()
     for scene in scene_plan.scenes:
         referenced_ids.update(scene.script_segment_ids)

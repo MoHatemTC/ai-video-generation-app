@@ -5,9 +5,10 @@ python-dotenv
 pydantic
 
 # LLM / agents
-openai
 crewai
-litellm==1.91.4
+crewai-tools
+litellm
+langchain-google-genai>=1.0.0
 
 # Database / backend-as-a-service
 supabase
