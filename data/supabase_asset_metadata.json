@@ -76,5 +76,83 @@
         "source": "generated",
         "license": "open-source",
         "registered_at": "2026-07-29T20:06:41.020922+00:00"
+    },
+    {
+        "video_id": "bdb514f6-0ad7-4083-a86e-7b0f7f2beeba",
+        "asset_id": "none",
+        "scene_id": "scene_2",
+        "cue_id": "cue_2",
+        "element": "A 3D transparent box labeled Docker Image, with floating icons of code brackets, gear wheels, and database cylinders zooming inside.",
+        "prompt": "Illustration showing: A 3D transparent box labeled Docker Image, with floating icons of code brackets, gear wheels, and database cylinders zooming inside.",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20A%203D%20transparent%20box%20labeled%20Docker%20Image%2C%20with%20floating%20icons%20of%20code%20brackets%2C%20gear%20wheels%2C%20and%20database%20cylinders%20zooming%20inside.",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-29T20:22:17.823789+00:00"
+    },
+    {
+        "video_id": "bdb514f6-0ad7-4083-a86e-7b0f7f2beeba",
+        "asset_id": "none",
+        "scene_id": "scene_3",
+        "cue_id": "cue_3",
+        "element": "Split screen showing an architectural blueprint on the left, and identical modern houses popping up one by one on the right.",
+        "prompt": "Illustration showing: Split screen showing an architectural blueprint on the left, and identical modern houses popping up one by one on the right.",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20Split%20screen%20showing%20an%20architectural%20blueprint%20on%20the%20left%2C%20and%20identical%20modern%20houses%20popping%20up%20one%20by%20one%20on%20the%20right.",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-29T20:22:17.855103+00:00"
+    },
+    {
+        "video_id": "bdb514f6-0ad7-4083-a86e-7b0f7f2beeba",
+        "asset_id": "none",
+        "scene_id": "scene_4",
+        "cue_id": "cue_4",
+        "element": "The Docker image blueprint stamping down on a server rack, instantly creating three active glowing containers with pulsing green status lights.",
+        "prompt": "Illustration showing: The Docker image blueprint stamping down on a server rack, instantly creating three active glowing containers with pulsing green status lights.",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20The%20Docker%20image%20blueprint%20stamping%20down%20on%20a%20server%20rack%2C%20instantly%20creating%20three%20active%20glowing%20containers%20with%20pulsing%20green%20status%20lights.",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-29T20:22:17.872640+00:00"
+    },
+    {
+        "video_id": "bdb514f6-0ad7-4083-a86e-7b0f7f2beeba",
+        "asset_id": "none",
+        "scene_id": "scene_5",
+        "cue_id": "cue_5",
+        "element": "An animation showing colorful transparent blocks stacking up vertically to form a complete tower labeled Image Layers.",
+        "prompt": "Illustration showing: An animation showing colorful transparent blocks stacking up vertically to form a complete tower labeled Image Layers.",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20An%20animation%20showing%20colorful%20transparent%20blocks%20stacking%20up%20vertically%20to%20form%20a%20complete%20tower%20labeled%20Image%20Layers.",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-29T20:22:17.896813+00:00"
+    },
+    {
+        "video_id": "bdb514f6-0ad7-4083-a86e-7b0f7f2beeba",
+        "asset_id": "none",
+        "scene_id": "scene_6",
+        "cue_id": "cue_6",
+        "element": "A friendly outro screen with the Docker whale logo and text reading Build, Ship, Run Anywhere.",
+        "prompt": "Illustration showing: A friendly outro screen with the Docker whale logo and text reading Build, Ship, Run Anywhere.",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20A%20friendly%20outro%20screen%20with%20the%20Docker%20whale%20logo%20and%20text%20reading%20Build%2C%20Ship%2C%20Run%20Anywhere.",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-29T20:22:17.912034+00:00"
+    },
+    {
+        "video_id": "bdb514f6-0ad7-4083-a86e-7b0f7f2beeba",
+        "asset_id": "none",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "An animated developer looking stressed at a messy desk, transitioning to a clean, organized laptop with a glowing Docker logo.",
+        "prompt": "Illustration showing: An animated developer looking stressed at a messy desk, transitioning to a clean, organized laptop with a glowing Docker logo.",
+        "url": "https://fqkyditcvwsgecsanqps.supabase.co/storage/v1/object/public/assets/bdb514f6-0ad7-4083-a86e-7b0f7f2beeba/none.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-29T20:22:19.642936+00:00"
     }
 ]

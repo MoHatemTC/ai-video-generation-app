@@ -37,8 +37,10 @@ from backend.app.pipeline.render.asset_agent import generate_assets_with_crewai
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
 
-def _get_dummy_trigger_time(cue_id: str) -> float:
-    return 0.2
+def _estimate_speech_ms(text: str) -> int:
+    """Estimate TTS duration from word count. ~150 wpm = 400ms per word."""
+    words = len(text.split()) if text else 0
+    return int(words * 400) + 2000  # 2s buffer
 
 
 def _detect_accent_colors(title: str) -> tuple:
@@ -81,7 +83,7 @@ def _get_fallback_icon_url(desc_text: str) -> str:
         return "https://api.iconify.design/lucide/cloud.svg?color=%230ea5e9"
     elif "file" in d or "node" in d or "build" in d:
         return "https://api.iconify.design/lucide/file-code.svg?color=%238b5cf6"
-    elif "image" in d:
+    elif "image" in d or "layer" in d or "stack" in d:
         return "https://api.iconify.design/lucide/layers.svg?color=%233b82f6"
     elif "run" in d or "instant" in d or "fast" in d:
         return "https://api.iconify.design/lucide/zap.svg?color=%23f59e0b"
@@ -91,6 +93,12 @@ def _get_fallback_icon_url(desc_text: str) -> str:
         return "https://api.iconify.design/lucide/feather.svg?color=%2306b6d4"
     elif "check" in d or "ship" in d or "recap" in d or "deploy" in d:
         return "https://api.iconify.design/lucide/check-circle-2.svg?color=%2322c55e"
+    elif "blueprint" in d or "recipe" in d or "plan" in d:
+        return "https://api.iconify.design/lucide/clipboard-list.svg?color=%233b82f6"
+    elif "meal" in d or "eat" in d or "food" in d:
+        return "https://api.iconify.design/lucide/utensils.svg?color=%23f59e0b"
+    elif "map" in d or "world" in d or "globe" in d:
+        return "https://api.iconify.design/lucide/globe.svg?color=%230ea5e9"
     else:
         return "https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9"
 
@@ -115,7 +123,7 @@ def _load_template(template_name: str) -> str:
 # ─── SHARED CSS ───────────────────────────────────────────────────────────────
 
 def _build_shared_css(c1: str, c2: str, c3: str) -> str:
-    """All shared CSS — static background, intro layout matching VPN reference, glassmorphism, animations."""
+    """All shared CSS — static background, intro layout, glassmorphism, hero layouts, animations."""
     return f"""
 :root{{
   --c1:{c1}; --c2:{c2}; --c3:{c3};
@@ -147,9 +155,10 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 @keyframes float{{0%,100%{{transform:translateY(0) rotate(0deg)}}50%{{transform:translateY(-10px) rotate(-1deg)}}}}
 @keyframes floatReverse{{0%,100%{{transform:translateY(0) rotate(0deg)}}50%{{transform:translateY(10px) rotate(1deg)}}}}
 @keyframes pulseSoft{{0%,100%{{transform:scale(1)}}50%{{transform:scale(1.08)}}}}
+@keyframes shimmer{{0%{{background-position:-200% 0}}100%{{background-position:200% 0}}}}
 
 .cue-asset {{ filter: drop-shadow(0 8px 16px rgba(0,0,0,0.08)); transition: transform 0.3s ease; }}
-.cue-asset:hover {{ transform: scale(1.1); }}
+.cue-asset:hover {{ transform: scale(1.08); }}
 .float {{ animation: float 5s ease-in-out infinite; }}
 .float-reverse {{ animation: floatReverse 6s ease-in-out infinite; }}
 .pulse-soft {{ animation: pulseSoft 3.5s ease-in-out infinite; }}
@@ -171,16 +180,24 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 /* ─── Scene Base Container ─── */
 .scene{{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .6s ease;padding:50px 6vw 110px;text-align:center;z-index:1;
+  opacity:0;pointer-events:none;transition:opacity .6s ease;padding:50px 6vw 100px;text-align:center;z-index:1;
 }}
 .scene.active{{opacity:1;pointer-events:auto;}}
-.scene-title{{font-size:clamp(24px,3.5vw,40px);font-weight:800;color:var(--text);margin-bottom:28px;line-height:1.2;}}
+.scene-title{{font-size:clamp(24px,3.5vw,40px);font-weight:800;color:var(--text);margin-bottom:20px;line-height:1.2;}}
 .scene-title span{{
   background:linear-gradient(135deg,var(--c1),var(--c2));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }}
 
-/* ─── SCENE 0 : INTRO (Exact Match to VPN Reference) ─── */
+/* ─── Narration Text ─── */
+.scene-narration{{
+  font-size:clamp(15px,1.8vw,19px);color:var(--muted);line-height:1.7;
+  max-width:620px;font-weight:500;
+  opacity:0;animation:fadeUp .6s ease forwards;animation-delay:.5s;
+}}
+.scene-narration.centered{{text-align:center;margin:0 auto;}}
+
+/* ─── SCENE 0 : INTRO ─── */
 .scene[data-template="intro"]{{
   align-items:stretch;justify-content:flex-start;text-align:left;padding:0;
   background:
@@ -230,12 +247,60 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
   font-size:clamp(16px,2.2vw,26px);font-weight:600;color:#111827;transform:translateY(-6px);
 }}
 
+/* ─── Hero Layout (Content A — split screen) ─── */
+.hero-layout{{
+  display:flex;align-items:center;justify-content:center;gap:clamp(24px,4vw,60px);
+  width:100%;max-width:1000px;flex:1;
+}}
+.hero-image-wrap{{
+  flex-shrink:0;
+  opacity:0;animation:slideInLeft .6s cubic-bezier(0.34,1.56,0.64,1) forwards;animation-delay:.3s;
+}}
+.hero-img{{
+  width:clamp(180px,22vw,300px);height:clamp(180px,22vw,300px);
+  object-fit:contain;border-radius:24px;
+}}
+.hero-text-wrap{{
+  flex:1;text-align:left;
+  opacity:0;animation:slideInRight .6s ease forwards;animation-delay:.5s;
+}}
+.hero-text-wrap .scene-narration{{
+  text-align:left;opacity:1;animation:none;
+}}
+
+/* ─── Centered Hero Layout (Content B) ─── */
+.centered-hero{{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  width:100%;max-width:800px;flex:1;
+}}
+.centered-hero-img-wrap{{
+  opacity:0;animation:popIn .6s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:.3s;
+}}
+.centered-hero-img{{
+  width:clamp(160px,20vw,280px);height:clamp(160px,20vw,280px);
+  object-fit:contain;border-radius:24px;
+}}
+
+/* ─── Supporting Icons Row ─── */
+.supporting-icons{{
+  display:flex;flex-wrap:wrap;gap:14px;margin-top:20px;
+}}
+.supporting-icons.centered{{justify-content:center;}}
+.supporting-icon{{
+  display:flex;align-items:center;gap:10px;padding:10px 16px;
+  opacity:0;
+}}
+.scene.active .supporting-icon{{
+  animation:fadeUp .4s cubic-bezier(0.34,1.56,0.64,1) both;
+}}
+.supporting-icon span{{font-size:13px;font-weight:600;color:var(--text);}}
+
 /* ─── Base Hidden State for Unactive Cues ─── */
 .scene .risk-card, .scene .endpoint-icon, .scene .flow-node, .scene .flow-arrow, .scene .feature-card, .scene .check-item, .scene .final-badge {{
   opacity: 0;
 }}
 
-/* ─── Content A: Risk Grid / Diagram ─── */
+/* ─── Content A: Risk Grid (legacy fallback) ─── */
 .risk-grid{{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;max-width:850px;}}
 .risk-card{{
   display:flex;align-items:center;gap:18px;padding:20px 24px;min-width:240px;flex:1;
@@ -263,7 +328,7 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
   animation:fadeUp .35s ease both;
 }}
 
-/* ─── Content B: Card Grid ─── */
+/* ─── Content B: Card Grid (legacy fallback) ─── */
 .card-grid{{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;max-width:900px;}}
 .feature-card{{width:220px;padding:28px 22px;text-align:center;}}
 .scene.active .feature-card{{
@@ -295,13 +360,13 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 
 /* ─── Subtitle / Transcript Bar ─── */
 .scene-transcript{{
-  position:absolute;bottom:0;left:0;right:0;min-height:65px;
-  background:rgba(255,255,255,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  position:absolute;bottom:0;left:0;right:0;min-height:70px;
+  background:rgba(255,255,255,0.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   border-top:1px solid rgba(226,232,240,0.8);color:var(--text);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 24px;z-index:40;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 32px;z-index:40;
 }}
-.transcript-title{{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--c1);margin-bottom:2px;font-weight:800;}}
-.transcript-text{{font-size:16px;font-weight:600;text-align:center;}}
+.transcript-title{{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--c1);margin-bottom:4px;font-weight:800;}}
+.transcript-text{{font-size:15px;font-weight:500;text-align:center;line-height:1.5;max-width:800px;color:var(--muted);}}
 
 /* ─── Start & Replay Overlays ─── */
 #start-overlay{{position:absolute;inset:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}}
@@ -322,10 +387,10 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 """
 
 
-# ─── SHARED JAVASCRIPT (TTS Scene Player Only — No WebGL) ───────────────────
+# ─── SHARED JAVASCRIPT (TTS Scene Player — speech-driven transitions) ────────
 
 def _build_shared_js(scenes_data_json: str) -> str:
-    """Build the clean JS block for TTS scene playback and auto transitions."""
+    """Build the JS block for TTS scene playback with speech-driven transitions."""
     return f"""
 (function(){{
   const scenesData = {scenes_data_json};
@@ -372,27 +437,61 @@ def _build_shared_js(scenes_data_json: str) -> str:
       d.classList.toggle("done", idx < currentIdx);
       d.classList.toggle("current", idx === currentIdx);
     }});
-    if(subtitleText) subtitleText.textContent = scenesData[currentIdx].subtitle || "";
   }}
 
   function speakCurrentScene(){{
     const s = scenesData[currentIdx];
+    const minHold = s.holdMs || 8000;
+    // Show narration text in subtitle bar
+    if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
+
     return new Promise(resolve => {{
-      const finish = () => resolve();
-      const fallbackTimer = setTimeout(finish, (s.holdMs || 8000) + 3000);
+      let speechDone = false;
+      let holdDone = false;
+      const finish = () => {{
+        if(speechDone && holdDone) resolve();
+      }};
+
+      // Safety timeout: holdMs + 15s max to prevent infinite hang
+      const safetyTimer = setTimeout(() => {{
+        speechDone = true; holdDone = true;
+        if(synth) try{{ synth.cancel(); }} catch(e){{}}
+        resolve();
+      }}, minHold + 15000);
+
+      // Minimum display time — always wait at least holdMs
+      setTimeout(() => {{
+        holdDone = true;
+        finish();
+      }}, minHold);
+
+      // TTS narration — scene only advances when BOTH speech ends AND holdMs elapses
       if(synth && s.narration){{
         try{{
           synth.cancel();
           const utter = new SpeechSynthesisUtterance(s.narration);
           if(chosenVoice) utter.voice = chosenVoice;
-          utter.rate = 1.0;
-          utter.onend = () => {{ clearTimeout(fallbackTimer); finish(); }};
-          utter.onerror = () => {{ clearTimeout(fallbackTimer); finish(); }};
+          utter.rate = 0.95;
+          utter.onend = () => {{
+            clearTimeout(safetyTimer);
+            speechDone = true;
+            finish();
+          }};
+          utter.onerror = () => {{
+            clearTimeout(safetyTimer);
+            speechDone = true;
+            finish();
+          }};
           synth.speak(utter);
-        }} catch(err){{ clearTimeout(fallbackTimer); finish(); }}
+        }} catch(err){{
+          clearTimeout(safetyTimer);
+          speechDone = true;
+          finish();
+        }}
       }} else {{
-        clearTimeout(fallbackTimer);
-        setTimeout(finish, s.holdMs || 8000);
+        // No TTS available — just use holdMs
+        speechDone = true;
+        finish();
       }}
     }});
   }}
@@ -402,12 +501,19 @@ def _build_shared_js(scenes_data_json: str) -> str:
     showScene(currentIdx);
     await speakCurrentScene();
     if(!isPlaying) return;
-    if(currentIdx < scenesData.length - 1){{ currentIdx++; stepTimer = setTimeout(stepSequence, 400); }}
-    else {{ isPlaying = false; replayBtn.style.display = "inline-flex"; startOverlay.classList.remove("hidden"); startBtn.style.display = "none"; }}
+    if(currentIdx < scenesData.length - 1){{
+      currentIdx++;
+      stepTimer = setTimeout(stepSequence, 600);
+    }} else {{
+      isPlaying = false;
+      replayBtn.style.display = "inline-flex";
+      startOverlay.classList.remove("hidden");
+      startBtn.style.display = "none";
+    }}
   }}
 
   function startAutoPlay(f){{ isPlaying = true; currentIdx = f||0; if(stepTimer) clearTimeout(stepTimer); stepSequence(); }}
-  function stopAutoPlay(){{ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) synth.cancel(); }}
+  function stopAutoPlay(){{ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) try{{ synth.cancel(); }} catch(e){{}} }}
 
   dots.forEach((dot, idx) => {{ dot.addEventListener("click", () => {{ stopAutoPlay(); startOverlay.classList.add("hidden"); showScene(idx); }}); }});
   startBtn.addEventListener("click", () => {{ startOverlay.classList.add("hidden"); startAutoPlay(0); }});
@@ -428,7 +534,7 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
     scene_plan : dict
         A ScenePlan dictionary with ``scenes`` list.
     asset_data : dict | None
-        Optional asset data from Asset Service (``{"assets": [...]}"``).
+        Optional asset data from Asset Service (``{"assets": [...]}"`).
 
     Returns
     -------
@@ -467,7 +573,7 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
     except Exception as e:
         print(f"[PIPELINE WARNING] Iconify asset agent skipped/failed: {e}")
 
-    # 4. Enrich cues with asset URLs + progressive trigger times (ensuring NO scene is missing an icon)
+    # 4. Enrich cues with asset URLs + progressive trigger times
     for scene in plan.get("scenes", []):
         cues = scene.get("visual_cues", [])
         num_cues = len(cues)
@@ -485,16 +591,22 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
             elif aid and aid in generated_assets:
                 cue["asset_url"] = generated_assets[aid]
             elif "asset_url" not in cue or not cue["asset_url"] or "placehold.co" in cue["asset_url"]:
-                # Always resolve a clean, colorful Iconify SVG icon based on description
                 cue["asset_url"] = _get_fallback_icon_url(f"{aid} {cid} {desc}")
 
-            # Progressive trigger time across scene narration duration (crisp & fast)
+            # Progressive trigger time
             if "trigger_time_seconds" not in cue or cue["trigger_time_seconds"] is None or cue["trigger_time_seconds"] == 0:
                 if num_cues <= 1:
                     cue["trigger_time_seconds"] = 0.15
                 else:
                     spacing = min(1.0, max(0.4, (scene_duration * 0.45) / (num_cues - 1)))
                     cue["trigger_time_seconds"] = round(0.15 + idx * spacing, 2)
+
+    # 4b. Auto-calculate hold_ms from narration word count
+    for scene in plan.get("scenes", []):
+        narration = scene.get("text", "")
+        estimated_ms = _estimate_speech_ms(narration)
+        current_hold = scene.get("hold_ms") or 6000
+        scene["hold_ms"] = max(current_hold, estimated_ms)
 
     # 5. Validate against Pydantic schema
     try:
@@ -564,7 +676,7 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title} — Explainer Video</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 {css}
 </style>

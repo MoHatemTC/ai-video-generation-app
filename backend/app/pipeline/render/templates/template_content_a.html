@@ -1,47 +1,30 @@
 <div class="scene-title"><span>{{ scene.subtitle or scene.text }}</span></div>
 
-{% set hint = scene.layout_hint | default("generic", true) | lower %}
-
-{% if hint == "flow-diagram" %}
-<div class="flow-container">
-  {% for cue in scene.visual_cues %}
-  {% if not loop.first %}
-  <div class="flow-arrow" style="animation-delay:{{ (cue.trigger_time_seconds | default(loop.index0 * 1.5)) - 0.3 }}s">
-    <svg viewBox="0 0 32 32" style="width:40px;height:40px;" fill="none">
-      <path d="M6 16h20M20 10l6 6-6 6" stroke="var(--c1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </div>
-  {% endif %}
-  <div class="flow-node glass-panel" style="animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 1.5) }}s">
-    {% if cue.asset_url %}
-    <img src="{{ cue.asset_url | safe }}" class="cue-asset float" style="width:54px;height:54px;" alt="{{ cue.description }}" />
+<div class="hero-layout">
+  <div class="hero-image-wrap">
+    {% set hero_cue = scene.visual_cues[0] if scene.visual_cues else None %}
+    {% if hero_cue and hero_cue.asset_url %}
+    <img src="{{ hero_cue.asset_url | safe }}"
+         alt="{{ hero_cue.description }}"
+         class="cue-asset hero-img float"
+         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
     {% endif %}
-    <span>{{ cue.content or cue.description }}</span>
   </div>
-  {% endfor %}
-</div>
-
-{% elif hint == "tunnel-diagram" %}
-<div class="tunnel-diagram">
-  {% for cue in scene.visual_cues %}
-  <div class="endpoint-icon glass-panel" style="padding:24px; animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 1.5) }}s">
-    {% if cue.asset_url %}
-    <img src="{{ cue.asset_url | safe }}" class="cue-asset pulse-soft" style="width:70px;height:70px;margin-bottom:12px;" alt="{{ cue.description }}" />
+  <div class="hero-text-wrap">
+    <p class="scene-narration">{{ scene.text }}</p>
+    {% if scene.visual_cues | length > 1 %}
+    <div class="supporting-icons">
+      {% for cue in scene.visual_cues[1:] %}
+      <div class="supporting-icon glass-panel" style="animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 0.3 + 0.6) }}s">
+        {% if cue.asset_url %}
+        <img src="{{ cue.asset_url | safe }}" alt="{{ cue.description }}" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        {% endif %}
+        <span>{{ cue.content or cue.description }}</span>
+      </div>
+      {% endfor %}
+    </div>
     {% endif %}
-    <span>{{ cue.content or cue.description }}</span>
   </div>
-  {% endfor %}
 </div>
-
-{% else %}
-<div class="risk-grid">
-  {% for cue in scene.visual_cues %}
-  <div class="risk-card glass-panel" style="animation-delay:{{ cue.trigger_time_seconds | default(loop.index0 * 1.5) }}s">
-    {% if cue.asset_url %}
-    <img src="{{ cue.asset_url | safe }}" class="cue-asset float-reverse" style="width:48px;height:48px;flex-shrink:0;" alt="{{ cue.description }}" />
-    {% endif %}
-    <span class="risk-label">{{ cue.content or cue.description }}</span>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
