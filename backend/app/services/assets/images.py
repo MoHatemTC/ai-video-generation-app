@@ -32,38 +32,45 @@ class AssetService:
                 json.dump([], f)
 
     def _get_llm_client(self):
-        try:
-            api_key = os.getenv("LITELLM_API_KEY")
-            api_base = os.getenv("LITELLM_API_BASE") or os.getenv("LITELLM_BASE_URL")
-            model_name = (
-                os.getenv("LITELLM_MODEL")
-                or os.getenv("DEFAULT_MODEL")
-                or "kimi-k2.5"
-            )
-            if api_key and api_base:
-                return LLM(
-                    model=model_name,
-                    api_key=api_key,
-                    base_url=api_base,
+        """
+        Attempts to initialize and return a LiteLLM client, falling back to Google Gemini.
+        Provides detailed logging for each step.
+        """
+        # 1. Attempt to use the primary Sprints.ai LiteLLM server
+        litellm_api_key = os.getenv("LITELLM_API_KEY")
+        litellm_api_base = os.getenv("LITELLM_API_BASE")
+        if litellm_api_key and litellm_api_base:
+            logger.info("Attempting to connect to Sprints.ai LiteLLM server...")
+            try:
+                # 'openai/' instructs CrewAI to send OpenAI format to base_url
+                # 'gemini/gemini-2.5-flash' satisfies proxy 'gemini/*' team permission
+                llm = LLM(
+                    model="openai/gemini/gemini-2.5-flash",
+                    api_key=litellm_api_key,
+                    base_url=litellm_api_base,
                 )
-        except (ImportError, ValueError) as e:
-            logger.warning(f"LiteLLM client unavailable ({e}). Trying other providers.")
+                logger.info("✅ Successfully connected to Sprints.ai LiteLLM server.")
+                return llm
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to connect to Sprints.ai LiteLLM server: {e}")
 
-        # Try Google Gemini via langchain connector if available and gemini key is set
-        try:
-            if self.gemini_api_key:
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                return ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=self.gemini_api_key)
-        except Exception as e:
-            logger.warning(f"langchain_google_genai not available ({e}).")
+        # 2. Fallback to direct Google Gemini
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        if gemini_api_key:
+            logger.info("Attempting to connect to Google Gemini...")
+            try:
+                llm = LLM(
+                    model="gemini/gemini-2.5-flash",
+                    api_key=gemini_api_key
+                )
+                logger.info("✅ Successfully connected to Google Gemini.")
+                return llm
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to connect to Google Gemini: {e}")
 
-        # Final fallback to a lightweight fake LLM to keep CrewAI operable in tests/CI
-        try:
-            from langchain_community.llms.fake import FakeListLLM
-            return FakeListLLM(responses=["A detailed, vibrant illustration of the cue."])
-        except Exception:
-            logger.warning("No external LLM connectors found. Falling back to CrewAI local fake LLM.")
-            return LLM(model="openai/fake", api_key="fake")
+        # 3. If all else fails, return None
+        logger.error("❌ CRITICAL: Could not establish a connection to any LLM. Prompt optimization will be skipped.")
+        return None
 
     def register_asset_in_storage(self, asset: AssetItem, video_id: str) -> str:
         try:
@@ -105,43 +112,62 @@ class AssetService:
         except FileNotFoundError:
             logger.error("Visual prompt template file not found. Using hardcoded fallback.")
             template = """
-You are a visual design expert for an educational video studio. Your task is to refine a simple visual cue into a detailed, production-ready image generation prompt.
-**Quality Criteria to Enforce:**
-- **Style:** Flat 2D digital illustration. Clean lines, solid colors, minimalist and professional.
-- **Composition:** The main subject should be centered and clear. Avoid background clutter.
-- **Negative Prompts:** The final image should NOT include any of the following: {negative_prompts}.
-**Original Cue:**
-"{cue}"
-Based on the original cue, generate a single, optimized prompt string that strictly adheres to all quality criteria. The output must be only the prompt string itself.
+            You are a visual design expert for an educational video studio. Your task is to refine a simple visual cue into a detailed, production-ready image generation prompt.
+            **Quality Criteria to Enforce:**
+            - **Style:** Flat 2D digital illustration. Clean lines, solid colors, minimalist and professional.
+            - **Composition:** The main subject should be centered and clear. Avoid background clutter.
+            - **Negative Prompts:** The final image should NOT include any of the following: {negative_prompts}.
+            **-Original Cue:**  
+                "{cue}"
+                Based on the original cue, generate a single, optimized prompt string that strictly adheres to all quality criteria. The output must be only the prompt string itself.
 """
 
         negative_prompts = ", ".join(FORBIDDEN_PROMPT_KEYWORDS)
         return template.format(negative_prompts=negative_prompts, cue=cue)
 
+    def _build_fallback_prompt(self, cue: str) -> str:
+        """Builds a high-quality, fallback prompt with mandatory guardrails."""
+        # Mandatory guardrails to ensure high-quality, consistent output
+        guardrails = "flat 2d vector illustration, clean lines, educational, isolated background, no text, no shadows"
+        
+        # Combine the user's cue with the mandatory guardrails
+        enhanced_prompt = f"{guardrails}, {cue}"
+        
+        logger.info(f"Built high-quality fallback prompt: \"{enhanced_prompt}\"")
+        return enhanced_prompt
+
+    def _evaluate_prompt_quality(self, prompt: str) -> bool:
+        """
+        Performs a simple quality check on the generated prompt.
+        """
+        prompt_lower = prompt.lower()
+        if not all(keyword in prompt_lower for keyword in REQUIRED_STYLE_KEYWORDS):
+            logger.warning(f"Quality check failed: Prompt is missing required style keywords: {REQUIRED_STYLE_KEYWORDS}")
+            return False
+        if any(keyword in prompt_lower for keyword in FORBIDDEN_PROMPT_KEYWORDS):
+            logger.warning(f"Quality check failed: Prompt contains forbidden keywords: {FORBIDDEN_PROMPT_KEYWORDS}")
+            return False
+        return True
+
     async def resolve_visual_cue(
         self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str, supabase_client: Any = None
     ) -> AssetItem:
-        if os.getenv("ASSET_REMOTE_LLM_ENABLED", "1").lower() in {"0", "false", "no"}:
+        llm_client = self._get_llm_client()
+
+        # If we could not get a valid LLM client, do not attempt to run the crew.
+        # Go straight to the fallback prompt. This prevents downstream errors.
+        if not llm_client:
             optimized_prompt = self._build_fallback_prompt(cue)
         else:
-            llm_client = None
             try:
-                # Prefer a real client object when available
-                llm_client = self._get_llm_client()
-            except Exception as e:
-                logger.warning(f"Error creating LLM client ({e}). Will attempt Crew fallback or string model.")
-
-            try:
-                # Build an agent/crew using whatever LLM handle we can provide.
-                # If llm_client is a string (incoming branch pattern) Crew/Agent implementations
-                # should accept either the object or a model identifier; both forms are supported.
+                # Build an agent/crew using the successfully connected LLM client.
                 design_director = Agent(
                     role="Educational Visual Design Director",
                     goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
                     backstory="You are an expert visual layout designer at Sprints Video Studio.",
                     verbose=False,
                     allow_delegation=False,
-                    llm=llm_client or os.getenv("OPENROUTER_MODEL", "openrouter/free")
+                    llm=llm_client
                 )
 
                 prompt_template = self._build_prompt_template(cue)
@@ -174,9 +200,9 @@ Based on the original cue, generate a single, optimized prompt string that stric
 
         # Construct Pollinations image URL from the final optimized prompt
         try:
-            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(optimized_prompt)}"
+            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(optimized_prompt)}?width=1280&height=720&model=flux&nologo=true"
         except Exception:
-            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(str(optimized_prompt))}"
+            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(str(optimized_prompt))}?width=1280&height=720&model=flux&nologo=true"
 
         # If Supabase client is provided, download the pollinations image and upload it to Supabase Storage
         if supabase_client is not None:
@@ -231,6 +257,7 @@ Based on the original cue, generate a single, optimized prompt string that stric
         self.register_asset_in_storage(asset, video_id)
         return asset
 
+
 async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: Any = None) -> Dict[str, Any]:
     video_id = scene_data.get("video_id", "default_video_id")
 
@@ -263,7 +290,7 @@ async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: An
             )
             tasks.append(task)
 
-                asset_index += 1
+            asset_index += 1
 
     if not tasks:
         return {"video_id": video_id, "assets": []}
