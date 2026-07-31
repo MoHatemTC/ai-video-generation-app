@@ -8,9 +8,12 @@ from backend.routes.video_routes import router as video_router
 
 load_dotenv()
 
-# Setup litellm settings
-import litellm
-litellm.drop_params = True
+# Setup litellm settings safely if installed
+try:
+    import litellm
+    litellm.drop_params = True
+except ImportError:
+    pass
 
 # Read the frontend URL from environment, default to localhost for development
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

@@ -45,34 +45,39 @@ async def test_process_video_job_success(
     mock_generate_script.return_value = mock_script_data
 
     # Stage 2: Mock Scene Planner & Director
-    mock_planner_inst = MagicMock()
-    mock_planner_inst.plan_scenes = AsyncMock(return_value=MagicMock(model_dump=lambda: {"scenes": []}))
-    mock_planner_cls.return_value = mock_planner_inst
+    mock_planner = MagicMock()
+    mock_plan = MagicMock()
+    mock_plan.model_dump.return_value = {"scenes": []}
+    mock_planner.plan_scenes = AsyncMock(return_value=mock_plan)
+    mock_planner_cls.return_value = mock_planner
 
-    mock_director_inst = MagicMock()
-    mock_director_inst.evaluate = AsyncMock(return_value=MagicMock(passed=True, model_dump=lambda: {"passed": True}))
-    mock_director_cls.return_value = mock_director_inst
+    mock_director = MagicMock()
+    mock_report = MagicMock()
+    mock_report.passed = True
+    mock_report.overall_score = 95
+    mock_director.evaluate = AsyncMock(return_value=mock_report)
+    mock_director_cls.return_value = mock_director
     
-    # Stage 3: Mock the TTS Voiceover
-    mock_generate_voiceover.return_value = {
-        "local_path": "audio/test.wav",
-        "duration_seconds": 10.0
-    }
+    # Stage 3: Mock the Voiceover Service
+    mock_generate_voiceover.return_value = {"local_path": "fake_audio.wav"}
 
     # Stage 5: Mock Omar's Asset Service
     mock_process_scene.return_value = {"assets": []}
 
-    # 3. Setup Asyncio Thread Mocks (Stage 4 Alignment)
-    mock_to_thread.return_value = MagicMock(model_dump=lambda: {"word_timestamps": []})
+    # 3. Setup Asyncio Thread Mocks (For WhisperX and Render Engine)
+    mock_to_thread.side_effect = [
+        {"word_timestamps": []},                         # Stage 4: WhisperX Alignment
+        "data/renders/test-job-123.html"                 # Stage 6: Render Engine
+    ]
 
     job_id = "test-job-123"
     prompt = "Test prompt"
     
     # 4. Run the pipeline
-    await process_video_job(job_id, prompt, mock_supabase)
+    await process_video_job(prompt, job_id=job_id, supabase_client=mock_supabase)
 
     # 5. Verify it marked the job as completed
-    completed_call = {"status": "completed", "video_url": "web_render_ready"}
+    completed_call = {"status": "completed", "video_url": "data/renders/test-job-123.html"}
     update_args = [call.args[0] for call in mock_table.update.call_args_list]
     
     assert completed_call in update_args, "Pipeline did not reach completed state!"
@@ -98,7 +103,7 @@ async def test_process_video_job_failure(mock_generate_script):
     job_id = "test-job-fail"
     prompt = "Fail prompt"
     
-    await process_video_job(job_id, prompt, mock_supabase)
+    await process_video_job(prompt, job_id=job_id, supabase_client=mock_supabase)
     
     # Verify the failure was caught and logged to Supabase safely with the stage name
     failed_call = {"status": "failed", "error_message": "[script_generation] LiteLLM API Timeout!"}

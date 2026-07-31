@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What is a VPN? — E-Learning Video</title>
+<style>
+  :root{
+    --blue:#2563eb;
+    --blue-dark:#1d4ed8;
+    --orange:#f97316;
+    --orange-dark:#ea580c;
+    --dark:#1e293b;
+    --gray:#94a3b8;
+    --light-gray:#e2e8f0;
+    --red:#ef4444;
+    --green:#16a34a;
+    --bg:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;width:100%;
+    background:#ffffff;
+    font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+    overflow:hidden;
+  }
+  #page{
+    width:100vw;height:100vh;
+    position:relative;
+  }
+  #video-frame{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    background:var(--bg);
+    overflow:hidden;
+  }
+  #debug-banner{
+    position:fixed;top:0;left:0;right:0;z-index:9999;
+    background:#dc2626;color:#fff;font:13px/1.5 monospace;
+    padding:10px 14px;white-space:pre-wrap;display:none;
+  }
+
+  /* ---------- progress dots ---------- */
+  #progress{
+    position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    display:flex;gap:8px;z-index:50;
+  }
+  #progress .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--light-gray);
+    transition:background .3s ease, transform .3s ease;
+  }
+  #progress .dot.done{background:var(--blue);}
+  #progress .dot.current{background:var(--orange);transform:scale(1.4);}
+
+  /* ---------- scenes ---------- */
+  .scene{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;
+    transition:opacity .5s ease;
+    padding:5vh 6vw 12vh;
+    text-align:center;
+  }
+  .scene.active{opacity:1;pointer-events:auto;}
+
+  .scene h2{
+    font-size:clamp(26px,4vw,46px);
+    color:var(--dark);
+    margin:0 0 10px;
+    font-weight:700;
+  }
+  .scene .sub{
+    font-size:clamp(14px,2vw,20px);
+    color:var(--gray);
+    margin-bottom:24px;
+    font-weight:500;
+  }
+
+  /* ---------- SCENE 0 : TITLE (template match) ---------- */
+  #scene-0{
+    align-items:stretch;justify-content:flex-start;
+    text-align:left;padding:0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(0,0,0,0.025) 0%, transparent 45%),
+      radial-gradient(circle at 80% 70%, rgba(0,0,0,0.03) 0%, transparent 50%),
+      radial-gradient(circle at 60% 15%, rgba(0,0,0,0.02) 0%, transparent 40%),
+      #f2efe9;
+  }
+  #scene-0 .paper-inner{
+    position:relative;width:100%;height:100%;
+    padding:5% 6%;
+    display:flex;flex-direction:column;justify-content:space-between;
+  }
+  #scene-0 .logo-row{
+    display:flex;align-items:center;gap:10px;
+    opacity:0;animation:fadeUp .5s forwards;animation-delay:.1s;
+  }
+  #scene-0 .logo-row svg{width:34px;height:34px;flex-shrink:0;}
+  #scene-0 .logo-row .logo-text{
+    font-size:clamp(18px,2.4vw,26px);font-weight:800;color:#111827;letter-spacing:-.3px;
+  }
+  #scene-0 .middle-row{
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+    flex:1;position:relative;
+  }
+  #scene-0 .left-title{
+    font-size:clamp(26px,4.6vw,52px);
+    font-weight:800;line-height:1.15;color:#111827;
+    max-width:52%;
+    opacity:0;animation:fadeUp .6s forwards;animation-delay:.4s;
+  }
+  #scene-0 .cloud-wrap{
+    position:relative;width:44%;max-width:340px;
+    opacity:0;animation:popIn .6s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:.8s;
+  }
+  #scene-0 .cloud-wrap svg{width:100%;height:auto;overflow:visible;}
+  #scene-0 .cloud-content{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  }
+  #scene-0 .cloud-content .emoji{font-size:clamp(30px,4.5vw,48px);}
+  #scene-0 .cloud-content .word{
+    font-size:clamp(20px,3.4vw,34px);font-weight:800;color:#111827;letter-spacing:-.5px;
+  }
+  #scene-0 .bottom-row{
+    display:flex;align-items:flex-end;gap:14px;
+    padding-bottom:2%;
+    opacity:0;animation:fadeUp .6s forwards;animation-delay:1.3s;
+  }
+  #scene-0 .bottom-row svg{width:150px;height:70px;flex-shrink:0;}
+  #scene-0 .bottom-row .bottom-label{
+    font-size:clamp(16px,2.4vw,28px);font-weight:600;color:#111827;
+    transform:translateY(-6px);
+  }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- generic icon pop ---------- */
+  .pop{opacity:0;transform:scale(.6);animation:popIn .5s cubic-bezier(.34,1.56,.64,1) forwards;}
+  @keyframes popIn{to{opacity:1;transform:scale(1);}}
+
+  /* ---------- SCENE 1 : PROBLEM ---------- */
+  #scene-1 .risk-diagram{
+    display:flex;align-items:center;justify-content:center;
+    gap:clamp(30px,5vw,80px);
+    width:100%;max-width:1000px;
+  }
+  #scene-1 .device-col{
+    display:flex;flex-direction:column;align-items:center;gap:14px;
+    opacity:0;animation:popIn .5s forwards;animation-delay:.1s;
+  }
+  #scene-1 .device-col span{font-size:15px;font-weight:700;color:var(--dark);}
+  #scene-1 .beams{
+    position:relative;width:clamp(90px,10vw,160px);height:220px;
+    flex-shrink:0;
+    opacity:0;animation:fadeIn .4s forwards;animation-delay:.3s;
+  }
+  #scene-1 .beams svg{width:100%;height:100%;}
+  .beam-particle{opacity:0;}
+  #scene-1.active .bp1{animation:beamMove1 2.2s linear infinite;animation-delay:.6s;}
+  #scene-1.active .bp2{animation:beamMove2 2.2s linear infinite;animation-delay:1s;}
+  #scene-1.active .bp3{animation:beamMove3 2.2s linear infinite;animation-delay:1.4s;}
+  @keyframes beamMove1{0%{opacity:0;offset-distance:0%;}12%{opacity:1;}88%{opacity:1;}100%{opacity:0;offset-distance:100%;}}
+  @keyframes beamMove2{0%{opacity:0;offset-distance:0%;}12%{opacity:1;}88%{opacity:1;}100%{opacity:0;offset-distance:100%;}}
+  @keyframes beamMove3{0%{opacity:0;offset-distance:0%;}12%{opacity:1;}88%{opacity:1;}100%{opacity:0;offset-distance:100%;}}
+  #scene-1 .risk-col{
+    display:flex;flex-direction:column;gap:clamp(20px,3vw,34px);
+  }
+  #scene-1 .risk-item{
+    display:flex;align-items:center;gap:14px;
+    opacity:0;transform:translateX(20px);
+    animation:riskIn .5s forwards;
+  }
+  #scene-1 .risk-item.r1{animation-delay:.7s;}
+  #scene-1 .risk-item.r2{animation-delay:1.1s;}
+  #scene-1 .risk-item.r3{animation-delay:1.5s;}
+  #scene-1 .risk-item span{font-size:15px;font-weight:700;color:var(--dark);text-align:left;}
+  #scene-1 .risk-icon{
+    width:52px;height:52px;border-radius:50%;
+    background:#fef2f2;border:2px solid #fecaca;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  @keyframes riskIn{to{opacity:1;transform:translateX(0);}}
+
+  @keyframes fadeIn{to{opacity:1;}}
+
+  /* ---------- SCENE 2 : SOLUTION (cartoon tunnel) ---------- */
+  #scene-2 .tunnel-diagram{
+    display:flex;align-items:center;justify-content:center;
+    gap:clamp(16px,3vw,40px);width:100%;max-width:1000px;
+  }
+  #scene-2 .endpoint-icon{
+    display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;
+    opacity:0;animation:popIn .5s forwards;animation-delay:.1s;
+  }
+  #scene-2 .endpoint-icon span{font-size:clamp(13px,1.4vw,16px);font-weight:700;color:var(--dark);white-space:nowrap;}
+  #scene-2 .tunnel-wrap{
+    position:relative;width:min(52vw,560px);height:160px;flex-shrink:1;
+    opacity:0;animation:fadeIn .5s forwards;animation-delay:.35s;
+  }
+  #scene-2 .tunnel-wrap svg.tunnel-bg{width:100%;height:100%;display:block;}
+  #scene-2 .packet-group{
+    position:absolute;top:0;left:0;opacity:0;
+    offset-anchor:0px 0px;
+  }
+  #scene-2.active .packet-group{
+    animation:packetTravel 3s ease-in-out infinite;animation-delay:1s;
+  }
+  @keyframes packetTravel{
+    0%{opacity:0;offset-distance:0%;}
+    8%{opacity:1;}
+    92%{opacity:1;}
+    100%{opacity:0;offset-distance:100%;}
+  }
+  #scene-2 .lock-overlay{
+    opacity:0;transform-origin:center;
+    animation:lockPop 3s ease-in-out infinite;animation-delay:1s;
+  }
+  @keyframes lockPop{
+    0%,32%{opacity:0;transform:scale(.3);}
+    44%,86%{opacity:1;transform:scale(1);}
+    100%{opacity:0;transform:scale(1);}
+  }
+
+  /* ---------- SCENE 3 : HOW IT WORKS ---------- */
+  #scene-3 .flow{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;max-width:700px;flex-wrap:nowrap;
+  }
+  #scene-3 .node{display:flex;flex-direction:column;align-items:center;gap:6px;opacity:0;animation:popIn .5s forwards;}
+  #scene-3 .node span{font-size:11px;font-weight:600;color:var(--dark);white-space:nowrap;}
+  #scene-3 .node.n1{animation-delay:.1s;}
+  #scene-3 .node.n2{animation-delay:1.6s;}
+  #scene-3 .node.n3{animation-delay:3s;}
+  #scene-3 .link{flex:1;position:relative;height:24px;min-width:60px;}
+  #scene-3 .link svg{width:100%;height:100%;}
+  #scene-3 .lockmove{opacity:0;}
+  #scene-3.active .lockmove{animation:lockTravel 1.4s linear infinite;}
+  #scene-3 .link.l1 .lockmove{animation-delay:.6s;}
+  #scene-3 .link.l2 .lockmove{animation-delay:2.1s;}
+  @keyframes lockTravel{
+    0%{opacity:0;offset-distance:0%;} 10%{opacity:1;} 90%{opacity:1;} 100%{opacity:0;offset-distance:100%;}
+  }
+
+  /* ---------- SCENE 4 : BENEFITS ---------- */
+  #scene-4 .cards{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;max-width:760px;}
+  #scene-4 .card{
+    width:180px;background:#f8fafc;border:1px solid var(--light-gray);
+    border-radius:12px;padding:18px 14px;
+    opacity:0;transform:translateY(24px);
+    animation:cardIn .55s forwards;
+  }
+  #scene-4 .card h3{font-size:14px;margin:10px 0 4px;color:var(--dark);}
+  #scene-4 .card p{font-size:11.5px;color:var(--gray);margin:0;line-height:1.4;}
+  #scene-4 .card.c1{animation-delay:.15s;}
+  #scene-4 .card.c2{animation-delay:.6s;}
+  #scene-4 .card.c3{animation-delay:1.05s;}
+  @keyframes cardIn{to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- SCENE 5 : OUTRO ---------- */
+  #scene-5 .checklist{display:flex;flex-direction:column;gap:12px;align-items:flex-start;margin-bottom:20px;}
+  #scene-5 .check-item{display:flex;align-items:center;gap:10px;opacity:0;animation:fadeUp .5s forwards;}
+  #scene-5 .check-item:nth-child(1){animation-delay:.1s;}
+  #scene-5 .check-item:nth-child(2){animation-delay:.6s;}
+  #scene-5 .check-item:nth-child(3){animation-delay:1.1s;}
+  #scene-5 .check-circle{
+    width:22px;height:22px;border-radius:50%;background:var(--green);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  #scene-5 .check-circle svg{width:12px;height:12px;}
+  #scene-5 .check-item span{font-size:14px;color:var(--dark);font-weight:600;}
+  #scene-5 .final-badge{
+    padding:10px 26px;border-radius:30px;
+    background:linear-gradient(90deg,var(--blue),var(--orange));
+    color:#fff;font-weight:700;font-size:clamp(14px,2vw,18px);
+    opacity:0;animation:fadeUp .6s forwards;animation-delay:1.6s;
+  }
+
+  /* ---------- subtitles ---------- */
+  #subtitle-bar{
+    position:absolute;bottom:0;left:0;right:0;
+    min-height:56px;
+    background:rgba(15,23,42,0.85);
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    padding:10px 24px;
+    font-size:clamp(13px,1.8vw,16px);
+    font-weight:500;
+    z-index:40;
+    text-align:center;
+  }
+  #subtitle-bar span{opacity:0;animation:subIn .4s forwards;}
+  @keyframes subIn{to{opacity:1;}}
+
+  /* ---------- start overlay ---------- */
+  #start-overlay{
+    position:absolute;inset:0;z-index:100;
+    background:rgba(255,255,255,0.97);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    transition:opacity .4s ease;
+  }
+  #start-overlay h1{
+    font-size:clamp(22px,3.5vw,32px);color:var(--dark);margin:0;font-weight:800;
+  }
+  #start-overlay p{color:var(--gray);margin:0;font-size:14px;}
+  #start-btn{
+    background:var(--blue);color:#fff;border:none;
+    padding:14px 34px;border-radius:30px;font-size:16px;font-weight:700;
+    cursor:pointer;display:flex;align-items:center;gap:10px;
+    box-shadow:0 8px 20px rgba(37,99,235,0.35);
+    transition:transform .15s ease, background .15s ease;
+  }
+  #start-btn:hover{background:var(--blue-dark);transform:translateY(-2px);}
+  #start-overlay.hidden{opacity:0;pointer-events:none;}
+
+  #replay-btn{
+    display:none;
+    margin-top:6px;
+    background:transparent;border:1px solid var(--gray);color:var(--dark);
+    padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div id="debug-banner"></div>
+<div id="page">
+  <div id="video-frame">
+
+    <div id="progress">
+      <div class="dot" data-i="0"></div>
+      <div class="dot" data-i="1"></div>
+      <div class="dot" data-i="2"></div>
+      <div class="dot" data-i="3"></div>
+      <div class="dot" data-i="4"></div>
+      <div class="dot" data-i="5"></div>
+    </div>
+
+    <!-- SCENE 0: TITLE -->
+    <div class="scene" id="scene-0">
+      <div class="paper-inner">
+
+        <div class="logo-row">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M14 6 L4 34" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+            <path d="M26 6 L16 34" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+            <path d="M36 6 L26 34" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+          </svg>
+          <span class="logo-text">Sprints</span>
+        </div>
+
+        <div class="middle-row">
+          <div class="left-title">What is a<br>VPN?</div>
+
+          <div class="cloud-wrap">
+            <svg viewBox="0 0 340 260" fill="none">
+              <path d="M55 150
+                       C30 148 18 128 30 112
+                       C20 96 34 74 58 76
+                       C60 52 88 36 112 48
+                       C122 26 158 22 176 40
+                       C200 22 234 30 240 54
+                       C266 50 288 70 282 92
+                       C304 98 308 126 288 138
+                       C296 158 276 176 254 170
+                       C250 192 220 202 200 188
+                       C186 206 152 206 140 188
+                       C114 202 82 190 82 168
+                       C64 172 48 164 55 150 Z"
+                stroke="#374151" stroke-width="3.2" stroke-linejoin="round"/>
+            </svg>
+            <div class="cloud-content">
+              <div class="emoji">🔒</div>
+              <div class="word">VPN</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-row">
+          <svg viewBox="0 0 150 70" fill="none">
+            <path d="M6 8 C20 40 60 58 130 56" stroke="#2563eb" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <path d="M112 44 L134 57 L110 66" stroke="#2563eb" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="bottom-label">Let's Get Started</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SCENE 1: THE PROBLEM -->
+    <div class="scene" id="scene-1">
+      <h2>Browsing Without Protection</h2>
+      <div class="risk-diagram">
+
+        <div class="device-col">
+          <svg width="90" height="76" viewBox="0 0 90 76">
+            <rect x="10" y="6" width="70" height="46" rx="4" fill="none" stroke="#1e293b" stroke-width="4"/>
+            <rect x="2" y="54" width="86" height="10" rx="4" fill="#1e293b"/>
+          </svg>
+          <span>Your Device</span>
+        </div>
+
+        <div class="beams">
+          <svg viewBox="0 0 160 220" fill="none">
+            <path id="beamPath1" d="M4 110 C 60 40, 100 20, 156 14" stroke="#f97316" stroke-width="2.5" stroke-dasharray="6 6"/>
+            <path id="beamPath2" d="M4 110 C 60 110, 100 110, 156 110" stroke="#f97316" stroke-width="2.5" stroke-dasharray="6 6"/>
+            <path id="beamPath3" d="M4 110 C 60 180, 100 200, 156 206" stroke="#f97316" stroke-width="2.5" stroke-dasharray="6 6"/>
+          </svg>
+          <svg class="beam-particle bp1" width="9" height="9" viewBox="0 0 9 9" style="position:absolute;top:0;left:0;offset-path:path('M4 110 C 60 40, 100 20, 156 14');">
+            <circle cx="4.5" cy="4.5" r="4.5" fill="#f97316"/>
+          </svg>
+          <svg class="beam-particle bp2" width="9" height="9" viewBox="0 0 9 9" style="position:absolute;top:0;left:0;offset-path:path('M4 110 C 60 110, 100 110, 156 110');">
+            <circle cx="4.5" cy="4.5" r="4.5" fill="#f97316"/>
+          </svg>
+          <svg class="beam-particle bp3" width="9" height="9" viewBox="0 0 9 9" style="position:absolute;top:0;left:0;offset-path:path('M4 110 C 60 180, 100 200, 156 206');">
+            <circle cx="4.5" cy="4.5" r="4.5" fill="#f97316"/>
+          </svg>
+        </div>
+
+        <div class="risk-col">
+          <div class="risk-item r1">
+            <div class="risk-icon">
+              <svg width="26" height="26" viewBox="0 0 26 26">
+                <circle cx="13" cy="13" r="11" fill="none" stroke="#ef4444" stroke-width="2.4"/>
+                <circle cx="13" cy="10" r="4" fill="#ef4444"/>
+                <path d="M6 20 Q13 12 20 20" fill="none" stroke="#ef4444" stroke-width="2.4"/>
+              </svg>
+            </div>
+            <span>Hacker</span>
+          </div>
+          <div class="risk-item r2">
+            <div class="risk-icon">
+              <svg width="26" height="22" viewBox="0 0 26 22">
+                <path d="M3 17 Q3 6 13 6 Q23 6 23 17" fill="none" stroke="#ef4444" stroke-width="2.4"/>
+                <rect x="1" y="17" width="24" height="4" rx="2" fill="#ef4444"/>
+              </svg>
+            </div>
+            <span>Your ISP</span>
+          </div>
+          <div class="risk-item r3">
+            <div class="risk-icon">
+              <svg width="28" height="20" viewBox="0 0 28 20">
+                <ellipse cx="14" cy="10" rx="12.5" ry="7.5" fill="none" stroke="#ef4444" stroke-width="2.4"/>
+                <circle cx="14" cy="10" r="3.4" fill="#ef4444"/>
+              </svg>
+            </div>
+            <span>Watchers</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SCENE 2: THE SOLUTION -->
+    <div class="scene" id="scene-2">
+      <h2>Enter the VPN</h2>
+      <div class="sub">Virtual Private Network</div>
+
+      <div class="tunnel-diagram">
+
+        <div class="endpoint-icon">
+          <svg width="60" height="50" viewBox="0 0 60 50">
+            <rect x="6" y="4" width="48" height="32" rx="3" fill="none" stroke="#1e293b" stroke-width="3.5"/>
+            <rect x="0" y="36" width="60" height="8" rx="3" fill="#1e293b"/>
+          </svg>
+          <span>Your Device</span>
+        </div>
+
+        <div class="tunnel-wrap">
+          <svg class="tunnel-bg" viewBox="0 0 480 160" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="tubeGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#93c5fd"/>
+                <stop offset="55%" stop-color="#2563eb"/>
+                <stop offset="100%" stop-color="#1d4ed8"/>
+              </linearGradient>
+              <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#fef9c3" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#fef9c3" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <!-- tube body -->
+            <rect x="14" y="30" width="452" height="100" rx="46" fill="url(#tubeGrad)" stroke="#1e3a8a" stroke-width="4"/>
+            <!-- top shine -->
+            <rect x="26" y="38" width="428" height="16" rx="8" fill="#ffffff" opacity="0.28"/>
+
+            <!-- tunnel rings for depth -->
+            <ellipse cx="100" cy="80" rx="6" ry="46" fill="none" stroke="#1e3a8a" stroke-width="2.5" opacity="0.4"/>
+            <ellipse cx="180" cy="80" rx="6" ry="46" fill="none" stroke="#1e3a8a" stroke-width="2.5" opacity="0.4"/>
+            <ellipse cx="260" cy="80" rx="6" ry="46" fill="none" stroke="#1e3a8a" stroke-width="2.5" opacity="0.4"/>
+            <ellipse cx="340" cy="80" rx="6" ry="46" fill="none" stroke="#1e3a8a" stroke-width="2.5" opacity="0.4"/>
+            <ellipse cx="400" cy="80" rx="6" ry="46" fill="none" stroke="#1e3a8a" stroke-width="2.5" opacity="0.35"/>
+
+            <!-- left opening (entering) -->
+            <ellipse cx="16" cy="80" rx="14" ry="46" fill="#0f172a" opacity="0.5"/>
+            <!-- right opening with safe glow -->
+            <ellipse cx="464" cy="80" rx="16" ry="46" fill="#0f172a" opacity="0.35"/>
+            <circle cx="464" cy="80" r="34" fill="url(#glowGrad)"/>
+
+            <!-- traveling data packet + lock badge (moves together along the tunnel) -->
+            <g class="packet-group"
+               style="offset-path:path('M14 80 C 150 80, 330 80, 466 80');">
+              <rect x="-14" y="-11" width="28" height="22" rx="4" fill="#ffffff" stroke="#1d4ed8" stroke-width="2.5"/>
+              <line x1="-9" y1="-4" x2="9" y2="-4" stroke="#1d4ed8" stroke-width="2"/>
+              <line x1="-9" y1="2" x2="4" y2="2" stroke="#1d4ed8" stroke-width="2"/>
+              <g class="lock-overlay" transform="translate(11,-11)">
+                <circle r="10" fill="#f97316"/>
+                <rect x="-5" y="-2" width="10" height="8" rx="1.6" fill="#fff"/>
+                <path d="M-3 -2 V-5 a3 3 0 0 1 6 0 V-2" fill="none" stroke="#fff" stroke-width="1.6"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <div class="endpoint-icon">
+          <svg width="46" height="52" viewBox="0 0 46 52">
+            <rect x="6" y="2" width="34" height="48" rx="4" fill="none" stroke="#2563eb" stroke-width="3.5"/>
+            <line x1="13" y1="12" x2="33" y2="12" stroke="#2563eb" stroke-width="2.4"/>
+            <line x1="13" y1="22" x2="33" y2="22" stroke="#2563eb" stroke-width="2.4"/>
+            <circle cx="23" cy="38" r="3.4" fill="#2563eb"/>
+          </svg>
+          <span>VPN Server</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SCENE 3: HOW IT WORKS -->
+    <div class="scene" id="scene-3">
+      <h2>How It Works</h2>
+      <div class="flow">
+        <div class="node n1">
+          <svg width="46" height="40" viewBox="0 0 46 40"><rect x="4" y="4" width="38" height="26" rx="3" fill="none" stroke="#1e293b" stroke-width="3"/><rect x="0" y="32" width="46" height="6" rx="2" fill="#1e293b"/></svg>
+          <span>Your Device</span>
+        </div>
+        <div class="link l1">
+          <svg viewBox="0 0 100 24" preserveAspectRatio="none">
+            <path id="path1" d="M2 12 H98" stroke="#2563eb" stroke-width="3" stroke-dasharray="6 5" fill="none"/>
+          </svg>
+          <svg class="lockmove" width="16" height="16" viewBox="0 0 16 16" style="position:absolute;top:4px;offset-path:path('M2 12 H98');">
+            <rect x="3" y="7" width="10" height="7" rx="1.5" fill="#f97316"/>
+            <path d="M5 7 V5 a3 3 0 0 1 6 0 V7" fill="none" stroke="#f97316" stroke-width="1.6"/>
+          </svg>
+        </div>
+        <div class="node n2">
+          <svg width="42" height="46" viewBox="0 0 42 46"><rect x="6" y="2" width="30" height="42" rx="4" fill="none" stroke="#2563eb" stroke-width="3"/><line x1="12" y1="10" x2="30" y2="10" stroke="#2563eb" stroke-width="2"/><line x1="12" y1="18" x2="30" y2="18" stroke="#2563eb" stroke-width="2"/><circle cx="21" cy="34" r="3" fill="#2563eb"/></svg>
+          <span>VPN Server</span>
+        </div>
+        <div class="link l2">
+          <svg viewBox="0 0 100 24" preserveAspectRatio="none">
+            <path d="M2 12 H98" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 5" fill="none"/>
+          </svg>
+          <svg class="lockmove" width="12" height="12" viewBox="0 0 12 12" style="position:absolute;top:6px;offset-path:path('M2 12 H98');">
+            <circle cx="6" cy="6" r="5" fill="#94a3b8"/>
+          </svg>
+        </div>
+        <div class="node n3">
+          <svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" fill="none" stroke="#1e293b" stroke-width="3"/><ellipse cx="23" cy="23" rx="8" ry="20" fill="none" stroke="#1e293b" stroke-width="2"/><line x1="3" y1="23" x2="43" y2="23" stroke="#1e293b" stroke-width="2"/></svg>
+          <span>Internet</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 4: BENEFITS -->
+    <div class="scene" id="scene-4">
+      <h2>Why It Matters</h2>
+      <div class="cards">
+        <div class="card c1">
+          <svg width="40" height="40" viewBox="0 0 40 40"><path d="M4 16 Q20 2 36 16" fill="none" stroke="#2563eb" stroke-width="3"/><path d="M10 22 Q20 12 30 22" fill="none" stroke="#2563eb" stroke-width="3"/><circle cx="20" cy="30" r="3" fill="#f97316"/></svg>
+          <h3>Safer Wi-Fi</h3>
+          <p>Protects you on public networks</p>
+        </div>
+        <div class="card c2">
+          <svg width="40" height="40" viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="16" ry="10" fill="none" stroke="#2563eb" stroke-width="3"/><circle cx="20" cy="20" r="4" fill="#2563eb"/><line x1="6" y1="6" x2="34" y2="34" stroke="#f97316" stroke-width="3"/></svg>
+          <h3>More Privacy</h3>
+          <p>Keeps trackers from watching you</p>
+        </div>
+        <div class="card c3">
+          <svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="#2563eb" stroke-width="3"/><ellipse cx="20" cy="20" rx="7" ry="17" fill="none" stroke="#2563eb" stroke-width="2"/><line x1="3" y1="20" x2="37" y2="20" stroke="#2563eb" stroke-width="2"/><rect x="26" y="4" width="10" height="7" fill="#f97316"/></svg>
+          <h3>Global Access</h3>
+          <p>Reach content from anywhere</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 5: OUTRO -->
+    <div class="scene" id="scene-5">
+      <h2 style="margin-bottom:16px;">Recap</h2>
+      <div class="checklist">
+        <div class="check-item"><div class="check-circle"><svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg></div><span>Encrypts your data</span></div>
+        <div class="check-item"><div class="check-circle"><svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg></div><span>Hides your location</span></div>
+        <div class="check-item"><div class="check-circle"><svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg></div><span>Keeps you private online</span></div>
+      </div>
+      <div class="final-badge">Stay Safe. Stay Private. Stay Free.</div>
+    </div>
+
+    <!-- SUBTITLES -->
+    <div id="subtitle-bar"><span id="subtitle-text"></span></div>
+
+    <!-- START OVERLAY -->
+    <div id="start-overlay">
+      <h1>What is a VPN?</h1>
+      <p>A short e-learning explainer — click to start with narration</p>
+      <button id="start-btn">▶ &nbsp;Start Video</button>
+      <button id="replay-btn">↻ &nbsp;Replay</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+window.addEventListener('error', function(e){
+  const b = document.getElementById('debug-banner');
+  if(b){
+    b.style.display = 'block';
+    b.textContent = 'Script error: ' + e.message + ' (line ' + e.lineno + ')';
+  }
+});
+
+(function(){
+  try {
+
+  const scenes = [
+    {
+      id: 'scene-0',
+      narration: null,
+      subtitle: null,
+      holdMs: 3400
+    },
+    {
+      id: 'scene-1',
+      narration: "Every time you go online, your data travels across the open internet, visible to your provider, hackers, or anyone watching.",
+      subtitle: "Your data travels across the open internet — visible to hackers, your provider, or anyone watching.",
+      holdMs: 8000
+    },
+    {
+      id: 'scene-2',
+      narration: "A VPN, or Virtual Private Network, builds a secure, encrypted tunnel between your device and the internet.",
+      subtitle: "A VPN — Virtual Private Network — builds a secure, encrypted tunnel to the internet.",
+      holdMs: 7000
+    },
+    {
+      id: 'scene-3',
+      narration: "Instead of connecting directly, your data passes through a VPN server first, hiding your location and scrambling your data.",
+      subtitle: "Your data passes through a VPN server first — hiding your location and scrambling your data.",
+      holdMs: 9500
+    },
+    {
+      id: 'scene-4',
+      narration: "That means safer public Wi-Fi, more privacy from trackers, and access to content from anywhere.",
+      subtitle: "Safer public Wi-Fi, more privacy from trackers, and access to content from anywhere.",
+      holdMs: 8000
+    },
+    {
+      id: 'scene-5',
+      narration: "In short, a VPN keeps you safe, private, and free online.",
+      subtitle: "In short — a VPN keeps you safe, private, and free online.",
+      holdMs: 4500
+    }
+  ];
+
+  const sceneEls = scenes.map(s => document.getElementById(s.id));
+  const dots = document.querySelectorAll('#progress .dot');
+  const subtitleText = document.getElementById('subtitle-text');
+  const startOverlay = document.getElementById('start-overlay');
+  const startBtn = document.getElementById('start-btn');
+  const replayBtn = document.getElementById('replay-btn');
+
+  const synth = window.speechSynthesis;
+  let chosenVoice = null;
+
+  function pickVoice(){
+    if(!synth) return;
+    const voices = synth.getVoices();
+    chosenVoice = voices.find(v => v.lang && v.lang.startsWith('en') && /female|Samantha|Zira|Google US/i.test(v.name))
+               || voices.find(v => v.lang && v.lang.startsWith('en'))
+               || voices[0] || null;
+  }
+  if(synth){
+    pickVoice();
+    synth.onvoiceschanged = pickVoice;
+  }
+
+  function resetScene(el){
+    // restart CSS animations by cloning inner animated nodes' classes
+    el.querySelectorAll('*').forEach(n=>{
+      const anim = getComputedStyle(n).animationName;
+      if(anim && anim !== 'none'){
+        n.style.animation = 'none';
+        void n.offsetWidth; // reflow
+        n.style.animation = '';
+      }
+    });
+  }
+
+  function showScene(i){
+    sceneEls.forEach((el,idx)=>{
+      if(idx === i){
+        resetScene(el);
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    });
+    dots.forEach((d,idx)=>{
+      d.classList.toggle('done', idx < i);
+      d.classList.toggle('current', idx === i);
+    });
+  }
+
+  function showSubtitle(text){
+    if(!text){ subtitleText.textContent=''; return; }
+    subtitleText.style.animation = 'none';
+    subtitleText.textContent = text;
+    void subtitleText.offsetWidth;
+    subtitleText.style.animation = 'subIn .4s forwards';
+  }
+
+  function speak(text){
+    return new Promise(resolve=>{
+      if(!synth || !text){ resolve(); return; }
+      const utter = new SpeechSynthesisUtterance(text);
+      if(chosenVoice) utter.voice = chosenVoice;
+      utter.rate = 0.98;
+      utter.pitch = 1.0;
+      utter.onend = () => resolve();
+      utter.onerror = () => resolve();
+      synth.speak(utter);
+    });
+  }
+
+  function wait(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function playSequence(){
+    for(let i=0;i<scenes.length;i++){
+      const s = scenes[i];
+      showScene(i);
+      showSubtitle(s.subtitle);
+      if(s.narration && synth){
+        await speak(s.narration);
+        await wait(400);
+      } else {
+        await wait(s.holdMs);
+      }
+    }
+    // small pause on last frame, then reveal replay
+    await wait(600);
+    replayBtn.style.display = 'inline-flex';
+    startOverlay.classList.remove('hidden');
+    document.getElementById('start-btn').style.display = 'none';
+    document.querySelector('#start-overlay h1').textContent = "That's a wrap!";
+    document.querySelector('#start-overlay p').textContent = "Want to watch it again?";
+  }
+
+  startBtn.addEventListener('click', () => {
+    startOverlay.classList.add('hidden');
+    if(synth) synth.cancel();
+    playSequence();
+  });
+
+  replayBtn.addEventListener('click', () => {
+    startOverlay.classList.add('hidden');
+    showScene(0);
+    showSubtitle(null);
+    if(synth) synth.cancel();
+    playSequence();
+  });
+
+  // initial state
+  showScene(0);
+
+  } catch(err){
+    const b = document.getElementById('debug-banner');
+    if(b){
+      b.style.display = 'block';
+      b.textContent = 'Script error: ' + err.message;
+    }
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>

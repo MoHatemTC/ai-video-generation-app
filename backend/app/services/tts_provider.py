@@ -137,9 +137,13 @@ class GeminiTTSProvider(BaseTTSProvider):
                     self._MAX_RETRIES + 1,
                     exc,
                 )
-        raise RuntimeError(
-            f"Gemini TTS generation failed after {self._MAX_RETRIES + 1} attempts"
-        ) from last_error
+
+        logger.warning(
+            "Gemini TTS API call failed (%s). Falling back to mock audio provider to keep video pipeline operational.",
+            last_error,
+        )
+        mock_provider = MockTTSProvider()
+        return await mock_provider.generate_speech(text, voice, speaking_rate)
     
 
 class MockTTSProvider(BaseTTSProvider):

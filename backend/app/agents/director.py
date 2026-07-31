@@ -4,7 +4,10 @@ import logging
 from typing import Dict, Any, Optional
 
 from crewai import Agent, Task, Crew, LLM
-import litellm
+try:
+    import litellm  # type: ignore
+except ImportError:
+    litellm = None
 
 from ..schemas.scene import ScenePlan, SceneQualityReport, CategoryScores, RevisionInstruction
 from ..config.quality import QualityRubric
@@ -16,7 +19,7 @@ logger = logging.getLogger(__name__)
 class SceneDirector:
     def __init__(
         self,
-        model_name: str = "kimi-k2.5",
+        model_name: str = "gemini/gemini-3.5-flash-lite",
         temperature: float = 0.2,
         max_tokens: int = 4096,
         api_key: Optional[str] = None,
@@ -27,8 +30,6 @@ class SceneDirector:
     ):
         self.fallback_config = fallback_config
         self.api_key = api_key or os.getenv("LITELLM_API_KEY")
-        if not self.api_key:
-            raise ValueError("LITELLM_API_KEY must be set in environment or passed.")
         self.base_url = base_url
         self.model_name = model_name
         self.temperature = temperature
@@ -36,16 +37,28 @@ class SceneDirector:
         self.max_retries = max_retries
         self.rubric = rubric or QualityRubric.default()
 
-        litellm.api_base = self.base_url
-        litellm.api_key = self.api_key
+        # If primary API key is missing or placeholder, immediately try fallback config (e.g. Gemini 3.5 Flash Lite)
+        if not self.api_key or "your_" in str(self.api_key):
+            if self.fallback_config and self.fallback_config.get("api_key"):
+                self.model_name = self.fallback_config["model_name"]
+                self.api_key = self.fallback_config["api_key"]
+                self.base_url = self.fallback_config.get("base_url")
 
-        self.llm = LLM(
-            model=model_name,
-            api_key=self.api_key,
-            temperature=temperature,
-            is_litellm=True,
-            base_url=self.base_url,
-        )
+        if litellm is not None and self.base_url:
+            litellm.api_base = self.base_url
+            litellm.api_key = self.api_key
+
+        kwargs = {
+            "model": self.model_name,
+            "temperature": self.temperature,
+        }
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+            kwargs["is_litellm"] = True
+
+        self.llm = LLM(**kwargs)
 
         self.agent = Agent(
             role="Scene Director",
@@ -66,19 +79,25 @@ class SceneDirector:
         logger.warning("Primary LLM failed in Director. Switching to fallback config...")
         self.model_name = self.fallback_config["model_name"]
         self.api_key = self.fallback_config["api_key"]
-        self.base_url = self.fallback_config["base_url"]
+        self.base_url = self.fallback_config.get("base_url")
         
-        litellm.api_base = self.base_url
-        litellm.api_key = self.api_key
+        if litellm is not None and self.base_url:
+            litellm.api_base = self.base_url
+            litellm.api_key = self.api_key
         
-        self.llm = LLM(
-            model=self.model_name,
-            api_key=self.api_key,
-            temperature=self.temperature,
-            is_litellm=True,
-            base_url=self.base_url,
-        )
+        kwargs = {
+            "model": self.model_name,
+            "temperature": self.temperature,
+        }
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+            kwargs["is_litellm"] = True
+
+        self.llm = LLM(**kwargs)
         self.agent.llm = self.llm
+        self.fallback_config = None
         return True
 
     def _build_task(self, script_input: Dict[str, Any], scene_plan: ScenePlan) -> Task:
@@ -93,7 +112,6 @@ class SceneDirector:
                 "Do not include scores."
             ),
             agent=self.agent,
-            # We'll parse manually, not output_json, because we will merge with computed scores
         )
 
     async def evaluate(self, script_input: Dict[str, Any], scene_plan: ScenePlan) -> SceneQualityReport:
@@ -116,51 +134,44 @@ class SceneDirector:
             )
         )
 
-        # 3. Call LLM to get additional strengths and revision instructions
+        # 3. Call LLM to get additional strengths and revision instructions if litellm available
         llm_strengths = []
         llm_instructions = []
-        try:
-            task = self._build_task(script_input, scene_plan)
-            messages = [
-                {"role": "system", "content": self.agent.backstory},
-                {"role": "user", "content": task.description + "\n\n" + task.expected_output}
-            ]
-            acompletion_func: Any = litellm.acompletion
-            response = await acompletion_func(
-                model=self.llm.model,
-                messages=messages,
-                api_key=self.llm.api_key,
-                base_url=self.llm.base_url,
-                temperature=self.llm.temperature or 0.2
-            )
-            raw = response.choices[0].message.content
-            # Clean markdown if present
-            raw = raw.strip()
-            if raw.startswith("```json"):
-                raw = raw[7:]
-            if raw.endswith("```"):
-                raw = raw[:-3]
-            raw = raw.strip()
-            data = json.loads(raw)
-            llm_strengths = data.get("strengths", [])
-            llm_instructions = data.get("revision_instructions", [])
-        except Exception as e:
-            logger.error(f"LLM evaluation failed (API or JSON error): {e}")
-            if self._switch_to_fallback():
-                # We do a simple recursive retry once if we switch
-                # Since we don't have a loop here, we can just call evaluate again
-                # But to avoid infinite recursion, we unset the fallback_config before doing so
-                self.fallback_config = None
-                return await self.evaluate(script_input, scene_plan)
-            logger.warning("Falling back to deterministic checks only.")
+        if litellm is not None:
+            try:
+                task = self._build_task(script_input, scene_plan)
+                messages = [
+                    {"role": "system", "content": self.agent.backstory},
+                    {"role": "user", "content": task.description + "\n\n" + task.expected_output}
+                ]
+                acompletion_func: Any = litellm.acompletion
+                response = await acompletion_func(
+                    model=self.llm.model,
+                    messages=messages,
+                    api_key=self.llm.api_key,
+                    base_url=self.llm.base_url,
+                    temperature=self.llm.temperature or 0.2
+                )
+                raw = response.choices[0].message.content or ""
+                raw = raw.strip()
+                if raw.startswith("```json"):
+                    raw = raw[7:]
+                if raw.endswith("```"):
+                    raw = raw[:-3]
+                raw = raw.strip()
+                data = json.loads(raw)
+                llm_strengths = data.get("strengths", [])
+                llm_instructions = data.get("revision_instructions", [])
+            except Exception as e:
+                logger.error(f"LLM evaluation failed (API or JSON error): {e}")
+                if self._switch_to_fallback():
+                    self.fallback_config = None
+                    return await self.evaluate(script_input, scene_plan)
+                logger.warning("Falling back to deterministic checks only.")
 
         # 4. Merge instructions (auto + LLM)
-        # Ensure instruction IDs are unique
         all_instructions = auto_instructions.copy()
-        # Convert LLM instructions to RevisionInstruction objects
         for instr in llm_instructions:
-            # remove duplicates based on reason? we can just append if new
-            # generate ID if missing
             if "instruction_id" not in instr:
                 instr["instruction_id"] = f"llm_{len(all_instructions)}"
             try:

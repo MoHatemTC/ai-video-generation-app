@@ -52,20 +52,17 @@ class AssetService:
     async def resolve_visual_cue(
         self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str, supabase_client: Any = None
     ) -> AssetItem:
-        
         # Pull the model string from the .env file, default to openrouter/free
         model_string = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 
         try:
-            # MOVE AGENT CREATION INSIDE TRY/EXCEPT! 
-            # If CrewAI crashes due to API keys or Pydantic, the fallback catches it.
             design_director = Agent(
                 role="Educational Visual Design Director",
                 goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
                 backstory="You are an expert visual layout designer at Sprints Video Studio.",
                 verbose=False,
                 allow_delegation=False,
-                llm=model_string  # <--- FIX: Passing string instead of LangChain object
+                llm=model_string
             )
 
             refinement_task = Task(
@@ -82,7 +79,6 @@ class AssetService:
             
         except Exception as e:
             logger.warning(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
-            # Fallback gracefully keeps the pipeline alive!
             optimized_prompt = f"Illustration showing: {cue}"
 
         # Live Pollinations URL
@@ -144,6 +140,7 @@ class AssetService:
         self.register_asset_in_storage(asset, video_id)
         return asset
 
+
 async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: Any = None) -> Dict[str, Any]:
     video_id = scene_data.get("video_id", "default_video_id")
     scenes = scene_data.get("scenes", [])
@@ -153,9 +150,9 @@ async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: An
 
     for scene in scenes:
         scene_id = scene.get("scene_id", "")
-        visual_cues = scene.get("visual_cues", scene.get("visual_elements", []))
+        cues_or_elements = scene.get("visual_cues") or scene.get("visual_elements") or []
 
-        for element in visual_cues:
+        for element in cues_or_elements:
             element_type = element.get("element_type")
             if element_type != "text" or "asset_id" in element:
                 fallback_id = f"image_{asset_index}"

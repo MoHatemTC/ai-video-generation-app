@@ -36,7 +36,7 @@ async def generate_video(request: VideoRequest, background_tasks: BackgroundTask
             raise ValueError("Failed to insert video record into database. Empty response received.")
             
         job_id = str(records[0].get("id", ""))
-        background_tasks.add_task(process_video_job, job_id, request.prompt, supabase)
+        background_tasks.add_task(process_video_job, request.prompt, job_id=job_id, supabase_client=supabase)
         
         return {
             "message": "Video generation job started!",

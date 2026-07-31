@@ -15,7 +15,7 @@ except ImportError:
 
 def normalize_model_name(raw_name: str) -> str:
     if not raw_name:
-        return "gemini/gemini-3.5-flash"
+        return "gemini/gemini-3.5-flash-lite"
     clean = raw_name.strip()
     if clean.startswith("gemini/") or clean.startswith("google/"):
         return clean
@@ -31,7 +31,7 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
         print("[NOTICE] CrewAI or API key not found. Skipping SVG asset generation.")
         return {}
 
-    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash")
+    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash-lite")
     model_name = normalize_model_name(raw_model)
     title = scene_plan_dict.get("title", "Unknown Topic")
     
@@ -54,7 +54,7 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
             "You are a master at selecting the perfect vector icons for technical explainer videos. "
             "You map abstract concepts to real, professional icons using the Iconify API (https://api.iconify.design/)."
         ),
-        verbose=True,
+        verbose=False,
         allow_delegation=False,
         llm=llm
     )

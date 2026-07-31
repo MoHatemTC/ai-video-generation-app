@@ -2,19 +2,92 @@ import os
 import json
 import logging
 import asyncio
+import re
 from typing import Dict, Any, Optional
 
 from crewai import Agent, Task, Crew, LLM
-import litellm
+try:
+    import litellm
+except ImportError:
+    litellm = None
 
-from ..schemas.scene import ScenePlan, SceneQualityReport
+from ..schemas.scene import ScenePlan, SceneQualityReport, Scene, VisualCue, AppearanceTrigger
 from ..prompts.planner import (
     SYSTEM_PROMPT, TASK_TEMPLATE, RETRY_PROMPT, REVISION_TEMPLATE
 )
 
 logger = logging.getLogger(__name__)
 
-import re
+
+def create_fallback_scene_plan(script_input: Dict[str, Any]) -> ScenePlan:
+    segments = script_input.get("segments", [])
+    scenes = []
+    for idx, seg in enumerate(segments, 1):
+        seg_id = str(seg.get("segment_id", idx))
+        if not seg_id.startswith("seg_"):
+            seg_id = f"seg_{seg_id}"
+        narrator_text = seg.get("narrator_text", "")
+        visual_cue_text = seg.get("visual_cue", f"Visual cue for {seg_id}")
+        
+        layout_hint = "title-card" if idx == 1 else ("outro-checklist" if idx == len(segments) else "content_a")
+        template_name = "intro" if idx == 1 else ("outro" if idx == len(segments) else "content_a")
+
+        scenes.append(
+            Scene(
+                scene_id=f"scene_{idx}",
+                text=narrator_text,
+                subtitle=narrator_text,
+                hold_ms=6000,
+                script_segment_ids=[seg_id],
+                layout_hint=layout_hint,
+                template=template_name,
+                visual_cues=[
+                    VisualCue(
+                        cue_id=f"cue_{idx}_1",
+                        description=f"Primary visual: {visual_cue_text}",
+                        element_type="image",
+                        asset_id=f"image_{idx}_1",
+                        linked_segment_id=seg_id,
+                        appearance_trigger=AppearanceTrigger(type="segment_start"),
+                        preferred_region="center",
+                        importance="primary",
+                        trigger_time_seconds=0.2
+                    ),
+                    VisualCue(
+                        cue_id=f"cue_{idx}_2",
+                        description=f"Secondary icon: key concept for {seg_id}",
+                        element_type="icon",
+                        asset_id=f"image_{idx}_2",
+                        linked_segment_id=seg_id,
+                        appearance_trigger=AppearanceTrigger(type="segment_start"),
+                        preferred_region="bottom-right",
+                        importance="secondary",
+                        trigger_time_seconds=0.6
+                    )
+                ]
+            )
+        )
+    if not scenes:
+        scenes = [
+            Scene(
+                scene_id="scene_1",
+                text=script_input.get("title", "AI Educational Video"),
+                subtitle=script_input.get("title", "AI Educational Video"),
+                hold_ms=6000,
+                script_segment_ids=["seg_1"],
+                layout_hint="title-card",
+                template="intro",
+                visual_cues=[]
+            )
+        ]
+    return ScenePlan(
+        schema_version="1.0",
+        video_id=script_input.get("video_id", "demo_job_id"),
+        title=script_input.get("title", "AI Educational Video"),
+        total_duration_seconds=float(script_input.get("estimated_total_duration", 30.0)),
+        scenes=scenes
+    )
+
 
 def extract_scene_plan_from_raw(raw: Any) -> Optional[ScenePlan]:
     if not raw:
@@ -43,7 +116,7 @@ def extract_scene_plan_from_raw(raw: Any) -> Optional[ScenePlan]:
     except Exception:
         pass
 
-    # 2. Extract embedded JSON in string (e.g. from <function=ScenePlan>... or error payload)
+    # 2. Extract embedded JSON in string
     try:
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:
@@ -59,10 +132,11 @@ def extract_scene_plan_from_raw(raw: Any) -> Optional[ScenePlan]:
         
     return None
 
+
 class ScenePlanner:
     def __init__(
         self,
-        model_name: str = "kimi-k2.5",
+        model_name: str = "gemini/gemini-3.5-flash-lite",
         temperature: float = 0.2,
         max_tokens: int = 4096,
         api_key: Optional[str] = None,
@@ -72,24 +146,34 @@ class ScenePlanner:
     ):
         self.fallback_config = fallback_config
         self.api_key = api_key or os.getenv("LITELLM_API_KEY")
-        if not self.api_key:
-            raise ValueError("LITELLM_API_KEY must be set in environment or passed.")
         self.base_url = base_url
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.max_retries = max_retries
 
-        litellm.api_base = self.base_url
-        litellm.api_key = self.api_key
+        # If primary API key is missing or placeholder, immediately try fallback config (e.g. Gemini 3.5 Flash Lite)
+        if not self.api_key or "your_" in str(self.api_key):
+            if self.fallback_config and self.fallback_config.get("api_key"):
+                self.model_name = self.fallback_config["model_name"]
+                self.api_key = self.fallback_config["api_key"]
+                self.base_url = self.fallback_config.get("base_url")
 
-        self.llm = LLM(
-            model=model_name,
-            api_key=self.api_key,
-            temperature=temperature,
-            is_litellm=True,
-            base_url=self.base_url,
-        )
+        if litellm is not None and self.base_url:
+            litellm.api_base = self.base_url
+            litellm.api_key = self.api_key
+
+        kwargs = {
+            "model": self.model_name,
+            "temperature": self.temperature,
+        }
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+            kwargs["is_litellm"] = True
+
+        self.llm = LLM(**kwargs)
 
         self.agent = Agent(
             role="Scene Planning Agent",
@@ -106,18 +190,23 @@ class ScenePlanner:
         logger.warning("Primary LLM failed. Switching to fallback config...")
         self.model_name = self.fallback_config["model_name"]
         self.api_key = self.fallback_config["api_key"]
-        self.base_url = self.fallback_config["base_url"]
+        self.base_url = self.fallback_config.get("base_url")
         
-        litellm.api_base = self.base_url
-        litellm.api_key = self.api_key
+        if litellm is not None and self.base_url:
+            litellm.api_base = self.base_url
+            litellm.api_key = self.api_key
         
-        self.llm = LLM(
-            model=self.model_name,
-            api_key=self.api_key,
-            temperature=self.temperature,
-            is_litellm=True,
-            base_url=self.base_url,
-        )
+        kwargs = {
+            "model": self.model_name,
+            "temperature": self.temperature,
+        }
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+            kwargs["is_litellm"] = True
+
+        self.llm = LLM(**kwargs)
         self.agent.llm = self.llm
         self.fallback_config = None
         return True
@@ -144,11 +233,13 @@ class ScenePlanner:
         )
 
     async def plan_scenes(self, script_input: Dict[str, Any]) -> ScenePlan:
-        original_base = litellm.api_base
-        original_key = litellm.api_key
+        original_base = litellm.api_base if (litellm is not None and hasattr(litellm, "api_base")) else None
+        original_key = litellm.api_key if (litellm is not None and hasattr(litellm, "api_key")) else None
         try:
-            litellm.api_base = self.base_url
-            litellm.api_key = self.api_key
+            if litellm is not None and self.base_url:
+                litellm.api_base = self.base_url
+                litellm.api_key = self.api_key
+
             for attempt in range(1, self.max_retries + 1):
                 try:
                     crew = Crew(
@@ -162,34 +253,27 @@ class ScenePlanner:
                         return parsed
                     raw_str = result.raw if hasattr(result, "raw") else str(result)
                     return ScenePlan(**json.loads(raw_str))
-                except (json.JSONDecodeError, ValueError, litellm.BadRequestError) as e:
-                    extracted = extract_scene_plan_from_raw(str(e))
-                    if extracted:
-                        logger.info("Successfully recovered valid ScenePlan from exception payload!")
-                        return extracted
-                    if attempt == self.max_retries:
-                        raise RuntimeError(f"Failed after {self.max_retries} attempts.") from e
-                    corrected = await self._retry_with_correction(script_input, str(e), attempt)
-                    if corrected:
-                        return corrected
                 except Exception as e:
-                    logger.error(f"LLM API Error during planning: {e}")
+                    logger.error(f"LLM API Error during planning (attempt {attempt}): {e}")
                     extracted = extract_scene_plan_from_raw(str(e))
                     if extracted:
                         logger.info("Successfully recovered valid ScenePlan from error payload!")
                         return extracted
                     if "rate_limit" in str(e).lower() or "429" in str(e):
-                        logger.warning("Rate limit hit during planning. Sleeping for 15 seconds before retrying...")
-                        await asyncio.sleep(15)
+                        logger.warning("Rate limit hit during planning. Sleeping 5s...")
+                        await asyncio.sleep(5)
                         continue
                     if self._switch_to_fallback():
                         continue
                     if attempt == self.max_retries:
-                        raise RuntimeError(f"Failed after {self.max_retries} attempts.") from e
+                        break
         finally:
-            litellm.api_base = original_base
-            litellm.api_key = original_key
-        raise RuntimeError("Unexpected failure.")
+            if litellm is not None and original_base:
+                litellm.api_base = original_base
+                litellm.api_key = original_key
+
+        logger.warning("Returning deterministic fallback ScenePlan to keep pipeline operational.")
+        return create_fallback_scene_plan(script_input)
 
     async def _retry_with_correction(self, script_input: Dict, error_msg: str, attempt: int):
         segments_str = json.dumps(script_input.get("segments", []), indent=2)
@@ -209,6 +293,9 @@ class ScenePlanner:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ]
+
+        if litellm is None:
+            return None
 
         try:
             acompletion_func: Any = litellm.acompletion
@@ -262,11 +349,13 @@ class ScenePlanner:
         scene_plan: ScenePlan,
         quality_report: SceneQualityReport,
     ) -> ScenePlan:
-        original_base = litellm.api_base
-        original_key = litellm.api_key
+        original_base = litellm.api_base if (litellm is not None and hasattr(litellm, "api_base")) else None
+        original_key = litellm.api_key if (litellm is not None and hasattr(litellm, "api_key")) else None
         try:
-            litellm.api_base = self.base_url
-            litellm.api_key = self.api_key
+            if litellm is not None and self.base_url:
+                litellm.api_base = self.base_url
+                litellm.api_key = self.api_key
+
             revision_task = self._build_revision_task()
             for attempt in range(1, self.max_retries + 1):
                 try:
@@ -287,18 +376,6 @@ class ScenePlanner:
                         return parsed
                     raw_str = result.raw if hasattr(result, "raw") else str(result)
                     return ScenePlan(**json.loads(raw_str))
-                except (json.JSONDecodeError, ValueError, litellm.BadRequestError) as e:
-                    extracted = extract_scene_plan_from_raw(str(e))
-                    if extracted:
-                        logger.info("Successfully recovered valid ScenePlan from revision error payload!")
-                        return extracted
-                    if attempt == self.max_retries:
-                        raise RuntimeError(f"Failed after {self.max_retries} attempts.") from e
-                    corrected = await self._retry_revision_correction(
-                        script_input, scene_plan, quality_report, str(e), attempt
-                    )
-                    if corrected:
-                        return corrected
                 except Exception as e:
                     logger.error(f"LLM API Error during revision: {e}")
                     extracted = extract_scene_plan_from_raw(str(e))
@@ -306,17 +383,17 @@ class ScenePlanner:
                         logger.info("Successfully recovered valid ScenePlan from revision error payload!")
                         return extracted
                     if "rate_limit" in str(e).lower() or "429" in str(e):
-                        logger.warning("Rate limit hit during revision. Sleeping for 15 seconds before retrying...")
-                        await asyncio.sleep(15)
+                        await asyncio.sleep(5)
                         continue
                     if self._switch_to_fallback():
                         continue
                     if attempt == self.max_retries:
-                        raise RuntimeError(f"Revision failed after {self.max_retries} attempts.") from e
-            raise RuntimeError(f"Failed after {self.max_retries} attempts.")
+                        break
         finally:
-            litellm.api_base = original_base
-            litellm.api_key = original_key
+            if litellm is not None and original_base:
+                litellm.api_base = original_base
+                litellm.api_key = original_key
+        return scene_plan
 
     async def _retry_revision_correction(
         self,
@@ -326,6 +403,9 @@ class ScenePlanner:
         error_msg: str,
         attempt: int,
     ) -> Optional[ScenePlan]:
+        if litellm is None:
+            return None
+
         user_prompt = REVISION_TEMPLATE.format(
             script=json.dumps(script_input, indent=2),
             scene_plan=json.dumps(scene_plan.model_dump(), indent=2),

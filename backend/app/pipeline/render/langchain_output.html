@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What is LangChain? — Explainer Video</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --c1:#22c55e; --c2:#eab308; --c3:#4ade80;
+  --bg:#f8fafc; --paper-bg:#f2efe9; --text:#0f172a; --muted:#475569;
+  --glass-bg:rgba(255,255,255,0.7); --glass-border:rgba(255,255,255,0.9);
+  --shadow:0 12px 40px rgba(0,0,0,0.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);overflow:hidden;}
+
+/* ─── Static Clean Background ─── */
+#page{width:100vw;height:100vh;position:relative;}
+#video-frame{
+  position:relative;width:100vw;height:100vh;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(14,165,233,0.05) 0%, transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(6,182,212,0.06) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(248,250,252,1) 0%, #f1f5f9 100%);
+  overflow:hidden;
+}
+
+/* ─── Entry & Motion Keyframe Animations ─── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{0%{opacity:0;transform:scale(0.6)}70%{transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes float{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-10px) rotate(-1deg)}}
+@keyframes floatReverse{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(10px) rotate(1deg)}}
+@keyframes pulseSoft{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+.cue-asset { filter: drop-shadow(0 8px 16px rgba(0,0,0,0.08)); transition: transform 0.3s ease; }
+.cue-asset:hover { transform: scale(1.08); }
+.float { animation: float 5s ease-in-out infinite; }
+.float-reverse { animation: floatReverse 6s ease-in-out infinite; }
+.pulse-soft { animation: pulseSoft 3.5s ease-in-out infinite; }
+
+/* ─── Frosty Glassmorphism Panels ─── */
+.glass-panel{
+  background:var(--glass-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--glass-border);box-shadow:var(--shadow);border-radius:20px;
+  transition:transform 0.3s ease, box-shadow 0.3s ease;
+}
+.glass-panel:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(0,0,0,0.1);}
+
+/* ─── Progress Dots ─── */
+#progress{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:50;}
+#progress .dot{width:9px;height:9px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:all .3s ease;}
+#progress .dot.done{background:var(--c1);}
+#progress .dot.current{background:var(--c1);transform:scale(1.6);box-shadow:0 0 10px var(--c1);}
+
+/* ─── Scene Base Container ─── */
+.scene{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .6s ease;padding:50px 6vw 100px;text-align:center;z-index:1;
+}
+.scene.active{opacity:1;pointer-events:auto;}
+.scene-title{font-size:clamp(24px,3.5vw,40px);font-weight:800;color:var(--text);margin-bottom:20px;line-height:1.2;}
+.scene-title span{
+  background:linear-gradient(135deg,var(--c1),var(--c2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+
+/* ─── Narration Text ─── */
+.scene-narration{
+  font-size:clamp(15px,1.8vw,19px);color:var(--muted);line-height:1.7;
+  max-width:620px;font-weight:500;
+  opacity:0;animation:fadeUp .6s ease forwards;animation-delay:.5s;
+}
+.scene-narration.centered{text-align:center;margin:0 auto;}
+
+/* ─── SCENE 0 : INTRO ─── */
+.scene[data-template="intro"]{
+  align-items:stretch;justify-content:flex-start;text-align:left;padding:0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(0,0,0,0.02) 0%, transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(0,0,0,0.025) 0%, transparent 50%),
+    var(--paper-bg);
+}
+.paper-inner{
+  position:relative;width:100%;height:100%;padding:4% 6%;
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.logo-row{
+  display:flex;align-items:center;gap:10px;
+  opacity:0;animation:fadeUp .5s forwards;animation-delay:.1s;
+}
+.logo-row svg{width:34px;height:34px;flex-shrink:0;}
+.logo-row .logo-text{
+  font-size:clamp(18px,2.4vw,26px);font-weight:800;color:#111827;letter-spacing:-.3px;
+}
+.middle-row{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  flex:1;position:relative;
+}
+.left-title{
+  font-size:clamp(28px,4.5vw,54px);font-weight:800;line-height:1.15;color:#111827;
+  max-width:52%;opacity:0;animation:fadeUp .6s forwards;animation-delay:.4s;
+}
+.cloud-wrap{
+  position:relative;width:44%;max-width:340px;
+  opacity:0;animation:popIn .6s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:.8s;
+}
+.cloud-wrap svg{width:100%;height:auto;overflow:visible;}
+.cloud-content{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+}
+.cloud-content .emoji{font-size:clamp(30px,4.5vw,48px);}
+.cloud-content .word{
+  font-size:clamp(18px,3vw,30px);font-weight:800;color:#111827;letter-spacing:-.5px;
+}
+.bottom-row{
+  display:flex;align-items:flex-end;gap:14px;padding-bottom:1%;
+  opacity:0;animation:fadeUp .6s forwards;animation-delay:1.2s;
+}
+.bottom-row svg{width:150px;height:70px;flex-shrink:0;}
+.bottom-label{
+  font-size:clamp(16px,2.2vw,26px);font-weight:600;color:#111827;transform:translateY(-6px);
+}
+
+/* ─── Hero Layout (Content A — split screen) ─── */
+.hero-layout{
+  display:flex;align-items:center;justify-content:center;gap:clamp(24px,4vw,60px);
+  width:100%;max-width:1000px;flex:1;
+}
+.hero-image-wrap{
+  flex-shrink:0;
+  opacity:0;animation:slideInLeft .6s cubic-bezier(0.34,1.56,0.64,1) forwards;animation-delay:.3s;
+}
+.hero-img{
+  width:clamp(180px,22vw,300px);height:clamp(180px,22vw,300px);
+  object-fit:contain;border-radius:24px;
+}
+.hero-text-wrap{
+  flex:1;text-align:left;
+  opacity:0;animation:slideInRight .6s ease forwards;animation-delay:.5s;
+}
+.hero-text-wrap .scene-narration{
+  text-align:left;opacity:1;animation:none;
+}
+
+/* ─── Centered Hero Layout (Content B) ─── */
+.centered-hero{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  width:100%;max-width:800px;flex:1;
+}
+.centered-hero-img-wrap{
+  opacity:0;animation:popIn .6s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:.3s;
+}
+.centered-hero-img{
+  width:clamp(160px,20vw,280px);height:clamp(160px,20vw,280px);
+  object-fit:contain;border-radius:24px;
+}
+
+/* ─── Supporting Icons Row ─── */
+.supporting-icons{
+  display:flex;flex-wrap:wrap;gap:14px;margin-top:20px;
+}
+.supporting-icons.centered{justify-content:center;}
+.supporting-icon{
+  display:flex;align-items:center;gap:10px;padding:10px 16px;
+  opacity:0;
+}
+.scene.active .supporting-icon{
+  animation:fadeUp .4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.supporting-icon span{font-size:13px;font-weight:600;color:var(--text);}
+
+/* ─── Base Hidden State for Unactive Cues ─── */
+.scene .risk-card, .scene .endpoint-icon, .scene .flow-node, .scene .flow-arrow, .scene .feature-card, .scene .check-item, .scene .final-badge {
+  opacity: 0;
+}
+
+/* ─── Content A: Risk Grid (legacy fallback) ─── */
+.risk-grid{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;max-width:850px;}
+.risk-card{
+  display:flex;align-items:center;gap:18px;padding:20px 24px;min-width:240px;flex:1;
+}
+.scene.active .risk-card{
+  animation:slideInLeft .45s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.risk-label{font-size:16px;font-weight:700;color:var(--text);text-align:left;}
+
+/* ─── Content A: Tunnel & Flow ─── */
+.tunnel-diagram{display:flex;align-items:center;justify-content:center;gap:30px;width:100%;max-width:900px;}
+.endpoint-icon{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.scene.active .endpoint-icon{
+  animation:scaleIn .45s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.endpoint-icon span{font-size:15px;font-weight:700;color:var(--text);}
+
+.flow-container{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;max-width:900px;}
+.flow-node{display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px;width:180px;}
+.scene.active .flow-node{
+  animation:scaleIn .45s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.flow-node span{font-size:15px;font-weight:700;color:var(--text);text-align:center;}
+.scene.active .flow-arrow{
+  animation:fadeUp .35s ease both;
+}
+
+/* ─── Content B: Card Grid (legacy fallback) ─── */
+.card-grid{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;max-width:900px;}
+.feature-card{width:220px;padding:28px 22px;text-align:center;}
+.scene.active .feature-card{
+  animation:fadeUp .45s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.feature-card h3{font-size:16px;font-weight:700;color:var(--text);margin-top:14px;}
+
+/* ─── Outro: Checklist ─── */
+.checklist{display:flex;flex-direction:column;gap:14px;align-items:flex-start;margin-bottom:24px;}
+.check-item{display:flex;align-items:center;gap:12px;}
+.scene.active .check-item{
+  animation:fadeUp .4s ease both;
+}
+.check-circle{
+  width:24px;height:24px;border-radius:50%;background:#16a34a;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.check-circle svg{width:14px;height:14px;}
+.check-item span{font-size:16px;color:var(--text);font-weight:600;}
+.final-badge{
+  padding:12px 32px;border-radius:30px;
+  background:linear-gradient(90deg,var(--c1),var(--c2));
+  color:#fff;font-weight:700;font-size:clamp(15px,2vw,19px);
+  box-shadow:0 10px 25px rgba(14,165,233,0.3);
+}
+.scene.active .final-badge{
+  animation:fadeUp .5s ease both;animation-delay:1.2s;
+}
+
+/* ─── Subtitle / Transcript Bar ─── */
+.scene-transcript{
+  position:absolute;bottom:0;left:0;right:0;min-height:70px;
+  background:rgba(255,255,255,0.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(226,232,240,0.8);color:var(--text);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 32px;z-index:40;
+}
+.transcript-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--c1);margin-bottom:4px;font-weight:800;}
+.transcript-text{font-size:15px;font-weight:500;text-align:center;line-height:1.5;max-width:800px;color:var(--muted);}
+
+/* ─── Start & Replay Overlays ─── */
+#start-overlay{position:absolute;inset:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
+#start-overlay h1{
+  font-size:clamp(28px,4.5vw,54px);font-weight:800;text-align:center;
+  background:linear-gradient(135deg,var(--c1),var(--c2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+#start-btn{
+  background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;border:none;padding:16px 42px;border-radius:99px;
+  font-size:17px;font-weight:700;cursor:pointer;transition:transform .2s,box-shadow .2s;
+  box-shadow:0 8px 24px rgba(14,165,233,0.35);
+}
+#start-btn:hover{transform:scale(1.05);box-shadow:0 14px 40px rgba(14,165,233,0.45);}
+#replay-btn{display:none;background:var(--bg);border:2px solid var(--c1);color:var(--text);padding:10px 28px;border-radius:99px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
+#replay-btn:hover{background:var(--c1);color:#fff;}
+.hidden{display:none !important;}
+
+</style>
+</head>
+<body>
+
+<div id="page">
+  <div id="video-frame">
+
+    <div id="progress">
+      <div class="dot current" data-i="0"></div>
+      <div class="dot" data-i="1"></div>
+      <div class="dot" data-i="2"></div>
+      <div class="dot" data-i="3"></div>
+      <div class="dot" data-i="4"></div>
+      <div class="dot" data-i="5"></div>
+    </div>
+
+    <div class="scene active" id="scene-0" data-layout-hint="title-card" data-template="intro">
+<div class="paper-inner">
+
+  <div class="logo-row">
+    <svg viewBox="0 0 40 40" fill="none">
+      <path d="M14 6 L4 34" stroke="var(--c1, #2563eb)" stroke-width="7" stroke-linecap="round"/>
+      <path d="M26 6 L16 34" stroke="var(--c1, #2563eb)" stroke-width="7" stroke-linecap="round"/>
+      <path d="M36 6 L26 34" stroke="var(--c1, #2563eb)" stroke-width="7" stroke-linecap="round"/>
+    </svg>
+    <span class="logo-text">Sprints</span>
+  </div>
+
+  <div class="middle-row">
+    <div class="left-title">
+      What is LangChain?
+    </div>
+
+    <div class="cloud-wrap">
+      <svg viewBox="0 0 340 260" fill="none">
+        <path d="M55 150
+                 C30 148 18 128 30 112
+                 C20 96 34 74 58 76
+                 C60 52 88 36 112 48
+                 C122 26 158 22 176 40
+                 C200 22 234 30 240 54
+                 C266 50 288 70 282 92
+                 C304 98 308 126 288 138
+                 C296 158 276 176 254 170
+                 C250 192 220 202 200 188
+                 C186 206 152 206 140 188
+                 C114 202 82 190 82 168
+                 C64 172 48 164 55 150 Z"
+          stroke="var(--c1, #374151)" stroke-width="3.5" stroke-linejoin="round" fill="rgba(255,255,255,0.7)"/>
+      </svg>
+      <div class="cloud-content">
+        
+        
+          <img src="https://api.iconify.design/logos/langchain.svg" alt="Hero Icon" class="cue-asset float" style="width:70px; height:70px; object-fit:contain;" />
+        
+        <div class="word">LangChain?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <svg viewBox="0 0 150 70" fill="none">
+      <path d="M6 8 C20 40 60 58 130 56" stroke="var(--c1, #2563eb)" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M112 44 L134 57 L110 66" stroke="var(--c1, #2563eb)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="bottom-label">Let's Get Started</div>
+  </div>
+
+</div>
+    </div>
+
+    <div class="scene" id="scene-1" data-layout-hint="risk-diagram" data-template="content_a">
+<div class="scene-title"><span>Standalone LLMs lack real-time data, memory, and external tool integration.</span></div>
+
+<div class="hero-layout">
+  <div class="hero-image-wrap">
+    
+    
+    <img src="https://api.iconify.design/lucide/cpu.svg?color=%233b82f6"
+         alt="User Prompt & LLM"
+         class="cue-asset hero-img float"
+         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
+    
+  </div>
+  <div class="hero-text-wrap">
+    <p class="scene-narration">Standalone LLMs are powerful, but they lack real-time data, memory of past chats, and the ability to run external tools.</p>
+    
+    <div class="supporting-icons">
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
+        
+        <img src="https://api.iconify.design/mdi/alert-circle-outline.svg?color=%23ef4444" alt="Disconnected capability paths" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>Disconnected capability paths</span>
+      </div>
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
+        
+        <img src="https://api.iconify.design/lucide/database-off.svg?color=%23ef4444" alt="No Live Data limitation" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>No Live Data limitation</span>
+      </div>
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:3.15s">
+        
+        <img src="https://api.iconify.design/lucide/brain-circuit.svg?color=%23ef4444" alt="No Memory limitation" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>No Memory limitation</span>
+      </div>
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:4.15s">
+        
+        <img src="https://api.iconify.design/lucide/wrench.svg?color=%23ef4444" alt="No Tools limitation" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>No Tools limitation</span>
+      </div>
+      
+    </div>
+    
+  </div>
+</div>
+    </div>
+
+    <div class="scene" id="scene-2" data-layout-hint="tunnel-diagram" data-template="content_a">
+<div class="scene-title"><span>LangChain bridges LLMs with custom data sources, APIs, and external tools.</span></div>
+
+<div class="hero-layout">
+  <div class="hero-image-wrap">
+    
+    
+    <img src="https://api.iconify.design/lucide/layout-grid.svg?color=%233b82f6"
+         alt="User Application"
+         class="cue-asset hero-img float"
+         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
+    
+  </div>
+  <div class="hero-text-wrap">
+    <p class="scene-narration">LangChain is an open-source framework that connects language models to custom data sources, APIs, and computation tools.</p>
+    
+    <div class="supporting-icons">
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
+        
+        <img src="https://api.iconify.design/lucide/git-merge.svg?color=%233b82f6" alt="LangChain Chain Tunnel" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>LangChain Chain Tunnel</span>
+      </div>
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
+        
+        <img src="https://api.iconify.design/lucide/server.svg?color=%233b82f6" alt="LLM & Knowledge Base" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>LLM & Knowledge Base</span>
+      </div>
+      
+    </div>
+    
+  </div>
+</div>
+    </div>
+
+    <div class="scene" id="scene-3" data-layout-hint="flow-diagram" data-template="content_a">
+<div class="scene-title"><span>Chains combine Prompts, Models, Memory, and Vector Stores into pipelines.</span></div>
+
+<div class="hero-layout">
+  <div class="hero-image-wrap">
+    
+    
+    <img src="https://api.iconify.design/lucide/message-square-code.svg?color=%233b82f6"
+         alt="User Prompt Node"
+         class="cue-asset hero-img float"
+         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
+    
+  </div>
+  <div class="hero-text-wrap">
+    <p class="scene-narration">It works by chaining together Prompts, Models, Memory, and Vector Indexes into seamless automated pipelines.</p>
+    
+    <div class="supporting-icons">
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
+        
+        <img src="https://api.iconify.design/lucide/Workflow.svg?color=%233b82f6" alt="LangChain Engine Node" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>LangChain Engine Node</span>
+      </div>
+      
+      <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
+        
+        <img src="https://api.iconify.design/lucide/database.svg?color=%233b82f6" alt="Vector DB & LLM Node" class="cue-asset"
+             style="width:40px;height:40px;"
+             onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+        
+        <span>Vector DB & LLM Node</span>
+      </div>
+      
+    </div>
+    
+  </div>
+</div>
+    </div>
+
+    <div class="scene" id="scene-4" data-layout-hint="cards" data-template="content_b">
+<div class="scene-title"><span>Build custom RAG Chatbots, Document Search, and autonomous AI Agents.</span></div>
+
+<div class="centered-hero">
+  
+  <div class="centered-hero-img-wrap">
+    <img src="https://api.iconify.design/lucide/file-text.svg?color=%233b82f6"
+         alt="RAG Chatbots Card"
+         class="cue-asset centered-hero-img float-reverse"
+         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=140&height=140';" />
+  </div>
+  
+  <p class="scene-narration centered">With LangChain, you can build custom RAG chatbots, automated document search engines, and autonomous AI agents.</p>
+  
+  <div class="supporting-icons centered">
+    
+    <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
+      
+      <img src="https://api.iconify.design/lucide/bot.svg?color=%233b82f6" alt="AI Agents Card" class="cue-asset"
+           style="width:40px;height:40px;"
+           onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+      
+      <span>AI Agents</span>
+    </div>
+    
+    <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
+      
+      <img src="https://api.iconify.design/lucide/search.svg?color=%233b82f6" alt="Doc Search Card" class="cue-asset"
+           style="width:40px;height:40px;"
+           onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
+      
+      <span>Doc Search</span>
+    </div>
+    
+  </div>
+  
+</div>
+    </div>
+
+    <div class="scene" id="scene-5" data-layout-hint="outro-checklist" data-template="outro">
+<h2 class="scene-title" style="margin-bottom:24px;"><span>In short — LangChain turns raw LLMs into powerful, action-driven AI apps.</span></h2>
+
+<p class="scene-narration centered" style="margin-bottom:28px;">In short, LangChain turns simple language models into intelligent, action-oriented AI applications.</p>
+
+<div class="checklist">
+  
+  <div class="check-item" style="animation-delay:0.15s">
+    <div class="check-circle">
+      <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+    </div>
+    <span>Connect Custom Data</span>
+  </div>
+  
+  <div class="check-item" style="animation-delay:1.15s">
+    <div class="check-circle">
+      <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+    </div>
+    <span>Add Persistent Memory</span>
+  </div>
+  
+  <div class="check-item" style="animation-delay:2.15s">
+    <div class="check-circle">
+      <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+    </div>
+    <span>Execute Autonomous Actions</span>
+  </div>
+  
+</div>
+
+<div class="final-badge">What is LangChain?</div>
+    </div>
+
+    <div class="scene-transcript">
+       <div class="transcript-title">Transcript</div>
+       <div class="transcript-text" id="subtitle-text"></div>
+    </div>
+
+    <div id="start-overlay">
+      <h1>What is LangChain?</h1>
+      <button id="start-btn">&#9654; &nbsp;Start Presentation</button>
+      <button id="replay-btn">&#8635; &nbsp;Replay</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+(function(){
+  const scenesData = [{"id": "scene-0", "narration": "What is LangChain? Let's find out how to build powerful AI applications.", "subtitle": "What is LangChain? Build powerful AI applications with LLMs.", "holdMs": 7000}, {"id": "scene-1", "narration": "Standalone LLMs are powerful, but they lack real-time data, memory of past chats, and the ability to run external tools.", "subtitle": "Standalone LLMs lack real-time data, memory, and external tool integration.", "holdMs": 10000}, {"id": "scene-2", "narration": "LangChain is an open-source framework that connects language models to custom data sources, APIs, and computation tools.", "subtitle": "LangChain bridges LLMs with custom data sources, APIs, and external tools.", "holdMs": 10000}, {"id": "scene-3", "narration": "It works by chaining together Prompts, Models, Memory, and Vector Indexes into seamless automated pipelines.", "subtitle": "Chains combine Prompts, Models, Memory, and Vector Stores into pipelines.", "holdMs": 11000}, {"id": "scene-4", "narration": "With LangChain, you can build custom RAG chatbots, automated document search engines, and autonomous AI agents.", "subtitle": "Build custom RAG Chatbots, Document Search, and autonomous AI Agents.", "holdMs": 11000}, {"id": "scene-5", "narration": "In short, LangChain turns simple language models into intelligent, action-oriented AI applications.", "subtitle": "In short — LangChain turns raw LLMs into powerful, action-driven AI apps.", "holdMs": 8000}];
+
+  let currentIdx = 0, isPlaying = false, stepTimer = null;
+  const sceneEls = scenesData.map(s => document.getElementById(s.id));
+  const dots = document.querySelectorAll("#progress .dot");
+  const subtitleText = document.getElementById("subtitle-text");
+  const startOverlay = document.getElementById("start-overlay");
+  const startBtn = document.getElementById("start-btn");
+  const replayBtn = document.getElementById("replay-btn");
+  const synth = window.speechSynthesis;
+  let chosenVoice = null;
+
+  function pickVoice(){
+    if(!synth) return;
+    try {
+      const voices = synth.getVoices();
+      chosenVoice = voices.find(v => v.lang && v.lang.startsWith("en") && /female|Samantha|Zira|Google US/i.test(v.name))
+                 || voices.find(v => v.lang && v.lang.startsWith("en"))
+                 || voices[0] || null;
+    } catch(e){}
+  }
+  if(synth){ pickVoice(); try { synth.onvoiceschanged = pickVoice; } catch(e){} }
+
+  function resetScene(el){
+    if(!el) return;
+    el.querySelectorAll("*").forEach(n => {
+      const a = getComputedStyle(n).animationName;
+      if(a && a !== "none" && !n.classList.contains("float") && !n.classList.contains("float-reverse") && !n.classList.contains("pulse-soft")){
+        n.style.animation = "none"; void n.offsetWidth; n.style.animation = "";
+      }
+    });
+  }
+
+  function showScene(i){
+    currentIdx = ((i % scenesData.length) + scenesData.length) % scenesData.length;
+    sceneEls.forEach((el, idx) => {
+      if(!el) return;
+      if(idx === currentIdx){ resetScene(el); el.classList.add("active"); }
+      else { el.classList.remove("active"); }
+    });
+    dots.forEach((d, idx) => {
+      d.classList.toggle("done", idx < currentIdx);
+      d.classList.toggle("current", idx === currentIdx);
+    });
+  }
+
+  function speakCurrentScene(){
+    const s = scenesData[currentIdx];
+    const minHold = s.holdMs || 8000;
+    // Show narration text in subtitle bar
+    if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
+
+    return new Promise(resolve => {
+      let speechDone = false;
+      let holdDone = false;
+      const finish = () => {
+        if(speechDone && holdDone) resolve();
+      };
+
+      // Safety timeout: holdMs + 15s max to prevent infinite hang
+      const safetyTimer = setTimeout(() => {
+        speechDone = true; holdDone = true;
+        if(synth) try{ synth.cancel(); } catch(e){}
+        resolve();
+      }, minHold + 15000);
+
+      // Minimum display time — always wait at least holdMs
+      setTimeout(() => {
+        holdDone = true;
+        finish();
+      }, minHold);
+
+      // TTS narration — scene only advances when BOTH speech ends AND holdMs elapses
+      if(synth && s.narration){
+        try{
+          synth.cancel();
+          const utter = new SpeechSynthesisUtterance(s.narration);
+          if(chosenVoice) utter.voice = chosenVoice;
+          utter.rate = 0.95;
+          utter.onend = () => {
+            clearTimeout(safetyTimer);
+            speechDone = true;
+            finish();
+          };
+          utter.onerror = () => {
+            clearTimeout(safetyTimer);
+            speechDone = true;
+            finish();
+          };
+          synth.speak(utter);
+        } catch(err){
+          clearTimeout(safetyTimer);
+          speechDone = true;
+          finish();
+        }
+      } else {
+        // No TTS available — just use holdMs
+        speechDone = true;
+        finish();
+      }
+    });
+  }
+
+  async function stepSequence(){
+    if(!isPlaying) return;
+    showScene(currentIdx);
+    await speakCurrentScene();
+    if(!isPlaying) return;
+    if(currentIdx < scenesData.length - 1){
+      currentIdx++;
+      stepTimer = setTimeout(stepSequence, 600);
+    } else {
+      isPlaying = false;
+      replayBtn.style.display = "inline-flex";
+      startOverlay.classList.remove("hidden");
+      startBtn.style.display = "none";
+    }
+  }
+
+  function startAutoPlay(f){ isPlaying = true; currentIdx = f||0; if(stepTimer) clearTimeout(stepTimer); stepSequence(); }
+  function stopAutoPlay(){ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) try{ synth.cancel(); } catch(e){} }
+
+  dots.forEach((dot, idx) => { dot.addEventListener("click", () => { stopAutoPlay(); startOverlay.classList.add("hidden"); showScene(idx); }); });
+  startBtn.addEventListener("click", () => { startOverlay.classList.add("hidden"); startAutoPlay(0); });
+  replayBtn.addEventListener("click", () => { startOverlay.classList.add("hidden"); startAutoPlay(0); });
+  showScene(0);
+})();
+
+</script>
+</body>
+</html>
