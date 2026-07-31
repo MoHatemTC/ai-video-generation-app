@@ -109,6 +109,9 @@ class AudioService:
         ultimately the orchestrator's try/except) can mark the job failed
         and retry, rather than silently pretending the upload succeeded.
         """
+        if not self.supabase:
+            raise ValueError("Supabase client is not configured for AudioService.")
+
         with open(file_path, "rb") as f:
             file_bytes = f.read()
 
@@ -129,10 +132,9 @@ class AudioService:
         # supabase-py has returned either a plain string or a dict
         # depending on version - handle both defensively.
         if isinstance(public_url_response, dict):
-            return public_url_response.get("publicUrl") or public_url_response.get(
-                "public_url"
-            )
-        return public_url_response
+            res = public_url_response.get("publicUrl") or public_url_response.get("public_url")
+            return str(res or "")
+        return str(public_url_response or "")
 
     async def generate_audio_track(self, request: TTSRequest) -> AudioTrack:
         """

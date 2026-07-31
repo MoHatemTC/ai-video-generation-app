@@ -124,13 +124,18 @@ class AssetService:
             except Exception as upload_err:
                 logger.error(f"Failed to upload image {asset_id} to Supabase. Falling back to direct URL. Error: {upload_err}", exc_info=True)
 
+        final_url = str(image_url or "")
+
         asset = AssetItem(
             asset_id=asset_id,
             scene_reference=scene_id,
+            scene_id=scene_id,
             cue_reference=cue_id,
+            cue_id=cue_id,
             asset_type="image",
-            url=image_url,
+            url=final_url,
             prompt=optimized_prompt,
+            description=optimized_prompt,
             source="generated",
             asset_license="open-source",
             element=cue
@@ -148,7 +153,7 @@ async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: An
 
     for scene in scenes:
         scene_id = scene.get("scene_id", "")
-        visual_cues = scene.get("visual_cues", [])
+        visual_cues = scene.get("visual_cues", scene.get("visual_elements", []))
 
         for element in visual_cues:
             element_type = element.get("element_type")

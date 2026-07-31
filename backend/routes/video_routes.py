@@ -31,11 +31,11 @@ async def generate_video(request: VideoRequest, background_tasks: BackgroundTask
             insert_payload["user_id"] = request.user_id
             
         db_response = supabase.table("videos").insert(insert_payload).execute()
-        
-        if not db_response.data or len(db_response.data) == 0:
+        records = db_response.data
+        if not isinstance(records, list) or len(records) == 0 or not isinstance(records[0], dict):
             raise ValueError("Failed to insert video record into database. Empty response received.")
             
-        job_id = db_response.data[0]['id']
+        job_id = str(records[0].get("id", ""))
         background_tasks.add_task(process_video_job, job_id, request.prompt, supabase)
         
         return {

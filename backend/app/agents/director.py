@@ -125,7 +125,8 @@ class SceneDirector:
                 {"role": "system", "content": self.agent.backstory},
                 {"role": "user", "content": task.description + "\n\n" + task.expected_output}
             ]
-            response = await litellm.acompletion(
+            acompletion_func: Any = litellm.acompletion
+            response = await acompletion_func(
                 model=self.llm.model,
                 messages=messages,
                 api_key=self.llm.api_key,

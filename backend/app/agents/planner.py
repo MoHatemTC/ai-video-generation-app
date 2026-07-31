@@ -16,9 +16,20 @@ logger = logging.getLogger(__name__)
 
 import re
 
-def extract_scene_plan_from_raw(raw: str) -> Optional[ScenePlan]:
+def extract_scene_plan_from_raw(raw: Any) -> Optional[ScenePlan]:
     if not raw:
         return None
+    if isinstance(raw, ScenePlan):
+        return raw
+    if isinstance(raw, dict):
+        try:
+            return ScenePlan(**raw)
+        except Exception:
+            return None
+    if hasattr(raw, "raw"):
+        raw = getattr(raw, "raw")
+    if not isinstance(raw, str):
+        raw = str(raw)
     # 1. Direct json load try
     try:
         raw_clean = raw.strip()
@@ -146,10 +157,11 @@ class ScenePlanner:
                         verbose=False,
                     )
                     result = await crew.kickoff_async(inputs=script_input)
-                    parsed = extract_scene_plan_from_raw(result.raw)
+                    parsed = extract_scene_plan_from_raw(result)
                     if parsed:
                         return parsed
-                    return ScenePlan(**json.loads(result.raw))
+                    raw_str = result.raw if hasattr(result, "raw") else str(result)
+                    return ScenePlan(**json.loads(raw_str))
                 except (json.JSONDecodeError, ValueError, litellm.BadRequestError) as e:
                     extracted = extract_scene_plan_from_raw(str(e))
                     if extracted:
@@ -199,7 +211,8 @@ class ScenePlanner:
         ]
 
         try:
-            response = await litellm.acompletion(
+            acompletion_func: Any = litellm.acompletion
+            response = await acompletion_func(
                 model=self.model_name,
                 messages=messages,
                 temperature=self.temperature,
@@ -269,17 +282,18 @@ class ScenePlanner:
                             "quality_report": json.dumps(quality_report.model_dump(), indent=2),
                         }
                     )
-                    parsed = extract_scene_plan_from_raw(result.raw)
+                    parsed = extract_scene_plan_from_raw(result)
                     if parsed:
                         return parsed
-                    return ScenePlan(**json.loads(result.raw))
+                    raw_str = result.raw if hasattr(result, "raw") else str(result)
+                    return ScenePlan(**json.loads(raw_str))
                 except (json.JSONDecodeError, ValueError, litellm.BadRequestError) as e:
                     extracted = extract_scene_plan_from_raw(str(e))
                     if extracted:
                         logger.info("Successfully recovered valid ScenePlan from revision error payload!")
                         return extracted
                     if attempt == self.max_retries:
-                        raise RuntimeError(f"Revision failed after {self.max_retries} attempts.") from e
+                        raise RuntimeError(f"Failed after {self.max_retries} attempts.") from e
                     corrected = await self._retry_revision_correction(
                         script_input, scene_plan, quality_report, str(e), attempt
                     )
@@ -299,14 +313,14 @@ class ScenePlanner:
                         continue
                     if attempt == self.max_retries:
                         raise RuntimeError(f"Revision failed after {self.max_retries} attempts.") from e
+            raise RuntimeError(f"Failed after {self.max_retries} attempts.")
         finally:
             litellm.api_base = original_base
             litellm.api_key = original_key
-        raise RuntimeError("Unexpected revision failure.")
 
     async def _retry_revision_correction(
         self,
-        script_input: Dict,
+        script_input: Dict[str, Any],
         scene_plan: ScenePlan,
         quality_report: SceneQualityReport,
         error_msg: str,
@@ -323,7 +337,8 @@ class ScenePlanner:
             {"role": "user", "content": user_prompt},
         ]
         try:
-            response = await litellm.acompletion(
+            acompletion_func: Any = litellm.acompletion
+            response = await acompletion_func(
                 model=self.model_name,
                 messages=messages,
                 temperature=self.temperature,

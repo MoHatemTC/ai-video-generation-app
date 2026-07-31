@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from typing import Any, Dict
 from supabase import Client
 import supabase
 
@@ -30,8 +31,11 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         logger.info(f"[{job_id}] Running Stage 1: Script Agent...")
         
         script_data = await generate_script(prompt)
-        # Handle both Pydantic models and raw dicts gracefully
-        script_dict = script_data.model_dump() if hasattr(script_data, 'model_dump') else script_data
+        # Handle both Pydantic models and raw dicts gracefully with explicit dict typing
+        if hasattr(script_data, 'model_dump'):
+            script_dict: dict[str, Any] = script_data.model_dump()
+        else:
+            script_dict = dict(script_data)
         script_dict["video_id"] = job_id
         supabase.table("videos").update({"script_data": script_dict}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 1 Complete!")
@@ -90,7 +94,7 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
         )
         
         # Keep local path reference for AlignmentService (Stage 4)
-        audio_path = audio_metadata.get("local_path", audio_metadata.get("audio_file_path", ""))
+        audio_path: str = str(audio_metadata.get("local_path") or audio_metadata.get("audio_file_path") or "")
         
         supabase.table("videos").update({
             "audio_metadata": audio_metadata
@@ -111,7 +115,10 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
             video_id=job_id
         )
         
-        timestamp_dict = timestamp_data.model_dump() if hasattr(timestamp_data, 'model_dump') else timestamp_data
+        if hasattr(timestamp_data, 'model_dump'):
+            timestamp_dict: dict[str, Any] = timestamp_data.model_dump()
+        else:
+            timestamp_dict = dict(timestamp_data)
         supabase.table("videos").update({"timestamp_data": timestamp_dict}).eq("id", job_id).execute()
         logger.info(f"[{job_id}] Stage 4 Complete!")
         #################################################################################################

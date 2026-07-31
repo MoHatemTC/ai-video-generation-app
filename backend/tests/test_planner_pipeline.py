@@ -1,4 +1,4 @@
-# backend/tests/test_pipeline.py
+import copy
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from backend.app.agents.planner import ScenePlanner
 from backend.app.agents.director import SceneDirector
 from backend.app.schemas.scene import ScenePlan, SceneQualityReport
+
+from typing import Dict, Any, List
 
 # Sample input (same as before)
 SAMPLE_SCRIPT = {
@@ -37,7 +39,7 @@ async def test_full_pipeline():
     # We'll patch the crew creation and the litellm calls inside the agents.
 
     # 1. Planner returns a valid ScenePlan
-    mock_plan = {
+    mock_plan: Dict[str, Any] = {
         "schema_version": "1.0",
         "video_id": "video_api_001",
         "title": "Understanding APIs",
@@ -114,8 +116,10 @@ async def test_full_pipeline():
     }
 
     # 3. Planner.revise_scenes returns the updated plan
-    mock_revised = mock_plan.copy()
-    mock_revised["scenes"][0]["visual_cues"][0]["preferred_region"] = "top"
+    mock_revised: Dict[str, Any] = copy.deepcopy(mock_plan)
+    scenes_list: List[Dict[str, Any]] = mock_revised["scenes"]
+    cues_list: List[Dict[str, Any]] = scenes_list[0]["visual_cues"]
+    cues_list[0]["preferred_region"] = "top"
 
     # Patch the Crew.kickoff_async method for both planner and director
     # We'll patch the Crew class itself to return a custom result
