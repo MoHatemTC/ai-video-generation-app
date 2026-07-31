@@ -752,5 +752,70 @@
         "source": "generated",
         "license": "open-source",
         "registered_at": "2026-07-30T19:18:01.497555+00:00"
+    },
+    {
+        "video_id": "video_test_123",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "Test",
+        "prompt": "<MagicMock name='kickoff()' id='1797421208000'>",
+        "url": "https://image.pollinations.ai/prompt/%3CMagicMock%20name%3D%27kickoff%28%29%27%20id%3D%271797421208000%27%3E",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-31T15:26:42.622959+00:00"
+    },
+    {
+        "video_id": "video_test_fallback",
+        "asset_id": "image_2",
+        "scene_id": "scene_2",
+        "cue_id": "cue_2",
+        "element": "",
+        "prompt": "Illustration showing: ",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-31T15:26:43.055125+00:00"
+    },
+    {
+        "video_id": "1c762356-fda8-4c8f-b75f-5ccd0b616167",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1",
+        "element": "Introductory title screen with bold text.",
+        "prompt": "Illustration showing: Introductory title screen with bold text.",
+        "url": "https://fqkyditcvwsgecsanqps.supabase.co/storage/v1/object/public/assets/1c762356-fda8-4c8f-b75f-5ccd0b616167/image_1.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-31T15:29:30.446087+00:00"
+    },
+    {
+        "video_id": "1c762356-fda8-4c8f-b75f-5ccd0b616167",
+        "asset_id": "image_2",
+        "scene_id": "scene_2",
+        "cue_id": "cue_2",
+        "element": "An engaging, colorful diagram explaining the topic.",
+        "prompt": "Illustration showing: An engaging, colorful diagram explaining the topic.",
+        "url": "https://fqkyditcvwsgecsanqps.supabase.co/storage/v1/object/public/assets/1c762356-fda8-4c8f-b75f-5ccd0b616167/image_2.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-31T15:29:30.728531+00:00"
+    },
+    {
+        "video_id": "1c762356-fda8-4c8f-b75f-5ccd0b616167",
+        "asset_id": "image_3",
+        "scene_id": "scene_3",
+        "cue_id": "cue_3",
+        "element": "An engaging, colorful diagram explaining the topic.",
+        "prompt": "Illustration showing: An engaging, colorful diagram explaining the topic.",
+        "url": "https://fqkyditcvwsgecsanqps.supabase.co/storage/v1/object/public/assets/1c762356-fda8-4c8f-b75f-5ccd0b616167/image_3.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-07-31T15:29:30.998883+00:00"
     }
 ]
