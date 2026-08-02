@@ -10,7 +10,6 @@
          onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=140&height=140';" />
   </div>
   {% endif %}
-  <p class="scene-narration centered">{{ scene.text }}</p>
   {% if scene.visual_cues | length > 1 %}
   <div class="supporting-icons centered">
     {% for cue in scene.visual_cues[1:] %}

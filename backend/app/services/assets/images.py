@@ -87,38 +87,52 @@ class AssetService:
         # If Supabase client is provided, download the pollinations image and upload it to Supabase Storage!
         if supabase_client is not None:
             try:
-                req = urllib.request.Request(
-                    image_url,
-                    headers={'User-Agent': 'Mozilla/5.0'}
-                )
                 loop = asyncio.get_running_loop()
-                def fetch_bytes():
-                    with urllib.request.urlopen(req, timeout=15) as response:
-                        return response.read()
-                
-                logger.info(f"Downloading generated image from Pollinations for asset {asset_id}...")
-                file_bytes = await loop.run_in_executor(None, fetch_bytes)
+                file_bytes = None
+                max_retries = 3
 
-                # Store with path format: {video_id}/{asset_id}.png
-                storage_key = f"{video_id}/{asset_id}.png"
-                logger.info(f"Uploading image to Supabase assets bucket as {storage_key}...")
-                
-                # Upload to "assets" bucket
-                supabase_client.storage.from_("assets").upload(
-                    storage_key,
-                    file_bytes,
-                    {"content-type": "image/png", "upsert": "true"},
-                )
-                
-                # Retrieve the public URL
-                public_url_response = supabase_client.storage.from_("assets").get_public_url(storage_key)
-                if isinstance(public_url_response, dict):
-                    image_url = public_url_response.get("publicUrl") or public_url_response.get("public_url")
-                else:
-                    image_url = public_url_response
-                logger.info(f"Image uploaded successfully! Public URL: {image_url}")
+                for attempt in range(max_retries):
+                    try:
+                        req = urllib.request.Request(
+                            image_url,
+                            headers={'User-Agent': 'Mozilla/5.0'}
+                        )
+                        def fetch_bytes():
+                            with urllib.request.urlopen(req, timeout=15) as response:
+                                return response.read()
+                        
+                        logger.info(f"Downloading generated image from Pollinations for asset {asset_id} (attempt {attempt + 1})...")
+                        file_bytes = await loop.run_in_executor(None, fetch_bytes)
+                        break
+                    except urllib.error.HTTPError as http_err:
+                        if http_err.code == 429 and attempt < max_retries - 1:
+                            wait_time = (attempt + 1) * 3  # 3s, 6s
+                            logger.warning(f"Rate limited (HTTP 429) downloading {asset_id} from Pollinations. Retrying in {wait_time}s...")
+                            await asyncio.sleep(wait_time)
+                        else:
+                            raise http_err
+
+                if file_bytes:
+                    # Store with path format: {video_id}/{asset_id}.png
+                    storage_key = f"{video_id}/{asset_id}.png"
+                    logger.info(f"Uploading image to Supabase assets bucket as {storage_key}...")
+                    
+                    # Upload to "assets" bucket
+                    supabase_client.storage.from_("assets").upload(
+                        storage_key,
+                        file_bytes,
+                        {"content-type": "image/png", "upsert": "true"},
+                    )
+                    
+                    # Retrieve the public URL
+                    public_url_response = supabase_client.storage.from_("assets").get_public_url(storage_key)
+                    if isinstance(public_url_response, dict):
+                        image_url = public_url_response.get("publicUrl") or public_url_response.get("public_url")
+                    else:
+                        image_url = public_url_response
+                    logger.info(f"Image uploaded successfully! Public URL: {image_url}")
             except Exception as upload_err:
-                logger.error(f"Failed to upload image {asset_id} to Supabase. Falling back to direct URL. Error: {upload_err}", exc_info=True)
+                logger.error(f"Failed to upload image {asset_id} to Supabase. Falling back to direct URL. Error: {upload_err}")
 
         final_url = str(image_url or "")
 
@@ -148,6 +162,20 @@ async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: An
     tasks = []
     asset_index = 1
 
+    # Semaphore to avoid bursting 15+ concurrent requests to Pollinations/LLM (HTTP 429 prevention)
+    semaphore = asyncio.Semaphore(2)
+
+    async def sem_resolve(cue: str, scene_id: str, cue_id: str, asset_id: str):
+        async with semaphore:
+            return await service.resolve_visual_cue(
+                cue=cue,
+                scene_id=scene_id,
+                cue_id=cue_id,
+                asset_id=asset_id,
+                video_id=video_id,
+                supabase_client=supabase_client
+            )
+
     for scene in scenes:
         scene_id = scene.get("scene_id", "")
         cues_or_elements = scene.get("visual_cues") or scene.get("visual_elements") or []
@@ -158,13 +186,11 @@ async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: An
                 fallback_id = f"image_{asset_index}"
                 asset_id = element.get("asset_id") or fallback_id
                 
-                task = service.resolve_visual_cue(
+                task = sem_resolve(
                     cue=element.get("description", element.get("text", "")),
                     scene_id=scene_id,
                     cue_id=element.get("cue_id", ""),
-                    asset_id=asset_id,
-                    video_id=video_id,
-                    supabase_client=supabase_client
+                    asset_id=asset_id
                 )
                 tasks.append(task)
                 asset_index += 1
@@ -176,6 +202,7 @@ async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: An
         }
 
     gathered_assets = await asyncio.gather(*tasks)
+
 
     resolved_assets = []
     for asset in gathered_assets:

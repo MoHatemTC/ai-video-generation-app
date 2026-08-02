@@ -44,15 +44,25 @@ def normalize_model_name(raw_name: str) -> str:
 # ─── PROMPT BUILDER ───────────────────────────────────────────────────────────
 
 def _build_writer_prompt(scene: dict, template_html: str, plan_context: dict) -> str:
-    """Build the agent prompt for populating a single scene template."""
+    """Build the agent prompt for populating a single scene template adhering to Playwright renderer guardrails."""
     return f"""
-You are a Senior HTML5 Template Population Specialist.
-
-Your job is to take a STATIC Jinja2 HTML template fragment and a scene's data,
-and produce the FINAL rendered HTML fragment with all placeholders filled in.
+You are the `html_code_writer` agent. Your objective is to populate self-contained HTML scene fragments for automated headless video capture via Playwright.
 
 ═══════════════════════════════════════════
-RULES
+MANDATORY RENDERER COMPATIBILITY GUARDRAILS
+═══════════════════════════════════════════
+
+1. CSS ANIMATIONS ONLY: Use CSS `@keyframes` and transitions exclusively. Prohibited: SMIL (<animate>), manual `requestAnimationFrame`, or external JS libraries (GSAP, Anime.js).
+2. SVG TRANSFORM SAFETY: NEVER place a CSS animated transform directly on an SVG element with a static `transform="translate(...)"`. Use nested group tags: outer `<g transform="...">` for position, inner `<g class="...">` for CSS animation.
+3. NO EMOJIS IN TEXT: Do NOT use raw emoji characters inside SVG/HTML `<text>` elements (headless Chromium lacks emoji fonts). Use inline vector icons/SVGs instead.
+4. NO BACKDROP-FILTER ON VIEWPORT: Do not use full-viewport `backdrop-filter` (causes Chromium state update deadlocks).
+5. INSTANT SCENE TRANSITIONS: Hard cuts between scenes, no multi-hundred millisecond crossfades.
+6. ANIMATION RESET CATEGORIZATION:
+   - Ambient/continuous motion: `.float`, `.float-reverse`, `.pulse-soft`
+   - One-shot entrances: `.fade-up`, `.pop-in`, `.slide-in-left`, `.slide-in-right`, `.scale-in`
+
+═══════════════════════════════════════════
+TEMPLATE POPULATION RULES
 ═══════════════════════════════════════════
 
 1. DO NOT change the layout structure, CSS classes, or animation classes in the template.
@@ -60,7 +70,7 @@ RULES
 3. DO NOT remove any elements from the template.
 4. Replace ALL Jinja2 placeholders ({{{{ }}}}, {{% %}}) with the actual data values.
 5. For asset images, use the EXACT `asset_url` from the scene data. DO NOT invent URLs.
-6. Every `<img>` tag MUST keep its animation class (float, float-reverse, pulse-soft).
+6. Every image/icon tag MUST keep its animation class (float, float-reverse, pulse-soft).
 7. Output ONLY the raw HTML fragment. No markdown, no code blocks, no explanation.
 
 ═══════════════════════════════════════════
@@ -95,6 +105,7 @@ OUTPUT
 Return the fully populated HTML fragment with all Jinja2 placeholders replaced
 by actual values from the scene data. Output ONLY raw HTML.
 """
+
 
 
 # ─── JINJA2 FALLBACK RENDERER ─────────────────────────────────────────────────

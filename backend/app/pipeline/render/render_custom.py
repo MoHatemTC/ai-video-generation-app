@@ -189,13 +189,12 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }}
 
-/* ─── Narration Text ─── */
+/* ─── Narration / Transcript Text (Hidden from Visual Display) ─── */
 .scene-narration{{
-  font-size:clamp(15px,1.8vw,19px);color:var(--muted);line-height:1.7;
-  max-width:620px;font-weight:500;
-  opacity:0;animation:fadeUp .6s ease forwards;animation-delay:.5s;
+  display:none !important;
 }}
-.scene-narration.centered{{text-align:center;margin:0 auto;}}
+.scene-narration.centered{{display:none !important;}}
+
 
 /* ─── SCENE 0 : INTRO ─── */
 .scene[data-template="intro"]{{
