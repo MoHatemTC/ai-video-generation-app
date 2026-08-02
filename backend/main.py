@@ -41,8 +41,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+
 # Include the routes from the routes/ folder (following company rules!)
 app.include_router(video_router)
+
+# Mount static renders and storage directories if available
+renders_dir = os.path.join(os.path.dirname(__file__), "..", "data", "renders")
+os.makedirs(renders_dir, exist_ok=True)
+app.mount("/renders", StaticFiles(directory=renders_dir), name="renders")
 
 @app.get("/")
 def read_root():

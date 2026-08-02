@@ -77,14 +77,14 @@ async def process_video_job(
         fallback_config = get_fallback_config()
 
         planner_agent = ScenePlanner(
-            model_name=primary_config["model_name"],
+            model_name=primary_config.get("model_name") or "gemini/gemini-pro-latest",
             api_key=primary_config["api_key"],
             base_url=primary_config["base_url"],
             fallback_config=fallback_config
         )
 
         director_agent = SceneDirector(
-            model_name=primary_config["model_name"],
+            model_name=primary_config.get("model_name") or "gemini/gemini-pro-latest",
             api_key=primary_config["api_key"],
             base_url=primary_config["base_url"],
             fallback_config=fallback_config
@@ -160,16 +160,26 @@ async def process_video_job(
         _safe_db_update(supabase_client, "videos", {"status": "rendering"}, job_id)
         logger.info(f"[{job_id}] Running Stage 6: Render Engine...")
 
-        def _render_to_html(scene_data: dict, asset_data: dict) -> str:
+        from backend.app.pipeline.render.mp4_renderer import render_scene_plan_to_mp4
+
+        async def _render_to_outputs(scene_data: dict, asset_data: dict) -> str:
             rendered_html = generate_video_html(scene_data, asset_data)
             output_dir = os.path.join(os.getcwd(), "data", "renders")
             os.makedirs(output_dir, exist_ok=True)
-            output_path = os.path.join(output_dir, f"{job_id}.html")
-            with open(output_path, "w", encoding="utf-8") as f:
+            
+            html_path = os.path.join(output_dir, f"{job_id}.html")
+            with open(html_path, "w", encoding="utf-8") as f:
                 f.write(rendered_html)
-            return output_path
 
-        video_url = await asyncio.to_thread(_render_to_html, scene_data_dict, asset_data)
+            mp4_path = os.path.join(output_dir, f"{job_id}.mp4")
+            try:
+                await render_scene_plan_to_mp4(scene_data, audio_path=audio_path, output_mp4_path=mp4_path, html_path=html_path)
+            except Exception as mp4_err:
+                logger.warning(f"[{job_id}] MP4 rendering warning: {mp4_err}")
+
+            return f"/renders/{job_id}.html"
+
+        video_url = await _render_to_outputs(scene_data_dict, asset_data)
         result_payload["video_url"] = video_url
         result_payload["status"] = "completed"
         logger.info(f"[{job_id}] Stage 6 Complete!")

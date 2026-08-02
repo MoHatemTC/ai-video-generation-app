@@ -53,7 +53,14 @@ class GeminiTTSProvider(BaseTTSProvider):
     _MAX_RETRIES = 2  # Google's docs note occasional transient 500s on TTS
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        # google-genai SDK requires a direct Google Gemini key (AIzaSy...)
+        # LiteLLM proxy keys (sk-...) are for OpenAI-compatible endpoints
+        g_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not g_key or g_key.startswith("your_"):
+            litellm_key = os.getenv("LITELLM_API_KEY")
+            if litellm_key and litellm_key.startswith("AIzaSy"):
+                g_key = litellm_key
+        self.api_key = api_key or g_key
         self.model = model or self._DEFAULT_MODEL
         self._client = None
 
@@ -127,7 +134,11 @@ class GeminiTTSProvider(BaseTTSProvider):
         for attempt in range(self._MAX_RETRIES + 1):
             try:
                 interaction = await asyncio.to_thread(_call)
-                pcm_bytes = base64.b64decode(interaction.output_audio.data)
+                output_audio = getattr(interaction, "output_audio", None)
+                audio_data = getattr(output_audio, "data", None) if output_audio else None
+                if not audio_data:
+                    raise ValueError("Gemini TTS response missing output_audio.data")
+                pcm_bytes = base64.b64decode(audio_data)
                 return self._pcm_to_wav(pcm_bytes)
             except Exception as exc:  # noqa: BLE001
                 last_error = exc
@@ -139,11 +150,39 @@ class GeminiTTSProvider(BaseTTSProvider):
                 )
 
         logger.warning(
-            "Gemini TTS API call failed (%s). Falling back to mock audio provider to keep video pipeline operational.",
+            "Gemini TTS API call failed (%s). Falling back to real GTTS voice audio provider.",
             last_error,
         )
-        mock_provider = MockTTSProvider()
-        return await mock_provider.generate_speech(text, voice, speaking_rate)
+        gtts_provider = GTTSProvider()
+        return await gtts_provider.generate_speech(text, voice, speaking_rate)
+
+
+class GTTSProvider(BaseTTSProvider):
+    """
+    Real Spoken Audio TTS Provider using Google Text-to-Speech (gTTS).
+    Generates REAL spoken audio without requiring any API keys or incurring costs.
+    """
+
+    async def generate_speech(
+        self, text: str, voice: str = "gemini-voice-a", speaking_rate: float = 1.0
+    ) -> bytes:
+        def _generate():
+            from gtts import gTTS
+            tts = gTTS(text=text, lang="en")
+            buf = io.BytesIO()
+            tts.write_to_fp(buf)
+            return buf.getvalue()
+
+        for attempt in range(3):
+            try:
+                mp3_bytes = await asyncio.to_thread(_generate)
+                if mp3_bytes and len(mp3_bytes) > 500:
+                    return mp3_bytes
+            except Exception as err:
+                logger.warning(f"gTTS attempt {attempt + 1}/3 failed: {err}")
+                await asyncio.sleep(1)
+
+        raise RuntimeError(f"Failed to generate real spoken voiceover for text: '{text[:50]}...'")
     
 
 class MockTTSProvider(BaseTTSProvider):
@@ -157,9 +196,11 @@ class MockTTSProvider(BaseTTSProvider):
     ) -> bytes:
         await asyncio.sleep(0.1)
         sample_rate = 16000
-        num_frames = sample_rate  # 1 second of audio
+        words = len(text.split()) if text else 0
+        duration_sec = max(3.0, words * 0.4)
+        num_frames = int(sample_rate * duration_sec)
         silent_pcm = b"\x00\x00" * num_frames  # 16-bit silent samples
- 
+
         buffer = io.BytesIO()
         with wave.open(buffer, "wb") as wf:
             wf.setnchannels(1)

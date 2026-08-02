@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 class SceneDirector:
     def __init__(
         self,
-        model_name: str = "gemini/gemini-3.5-flash-lite",
+        model_name: Optional[str] = "gemini/gemini-pro-latest",
         temperature: float = 0.2,
         max_tokens: int = 4096,
         api_key: Optional[str] = None,
-        base_url: Optional[str] = "https://learner-os.sprints.ai/litellm",
+        base_url: Optional[str] = "https://learner-os.sprints.ai/litellm/v1",
         max_retries: int = 3,
         rubric: Optional[QualityRubric] = None,
         fallback_config: Optional[Dict[str, Any]] = None,
@@ -31,14 +31,14 @@ class SceneDirector:
         self.fallback_config = fallback_config
         self.api_key = api_key or os.getenv("LITELLM_API_KEY")
         self.base_url = base_url
-        self.model_name = model_name
+        self.model_name = model_name or "gemini/gemini-pro-latest"
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.max_retries = max_retries
         self.rubric = rubric or QualityRubric.default()
 
         # If primary API key is missing or placeholder, immediately try fallback config (e.g. Gemini 3.5 Flash Lite)
-        if not self.api_key or "your_" in str(self.api_key):
+        if not self.api_key or "your_" in self.api_key:
             if self.fallback_config and self.fallback_config.get("api_key"):
                 self.model_name = self.fallback_config["model_name"]
                 self.api_key = self.fallback_config["api_key"]

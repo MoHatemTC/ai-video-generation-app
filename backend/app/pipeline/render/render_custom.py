@@ -40,7 +40,7 @@ from backend.app.pipeline.render.asset_agent import generate_assets_with_crewai
 def _estimate_speech_ms(text: str) -> int:
     """Estimate TTS duration from word count. ~150 wpm = 400ms per word."""
     words = len(text.split()) if text else 0
-    return int(words * 400) + 2000  # 2s buffer
+    return words * 400 + 2000  # 2s buffer
 
 
 def _detect_accent_colors(title: str) -> tuple:
@@ -435,6 +435,7 @@ def _build_shared_js(scenes_data_json: str) -> str:
       d.classList.toggle("current", idx === currentIdx);
     }});
   }}
+  window.showScene = showScene;
 
   function speakCurrentScene(){{
     const s = scenesData[currentIdx];
@@ -580,13 +581,18 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
             cid = cue.get("cue_id")
             desc = cue.get("description") or cue.get("content") or cue.get("cue_id") or ""
 
-            if aid and aid in asset_lookup:
+            # Check for existing image URL on cue object
+            existing_url = cue.get("asset_url") or cue.get("url") or cue.get("image_url")
+            
+            if existing_url and "placehold.co" not in str(existing_url):
+                cue["asset_url"] = str(existing_url)
+            elif aid and aid in asset_lookup:
                 cue["asset_url"] = asset_lookup[aid]
             elif cid and cid in asset_lookup:
                 cue["asset_url"] = asset_lookup[cid]
             elif aid and aid in generated_assets:
                 cue["asset_url"] = generated_assets[aid]
-            elif "asset_url" not in cue or not cue["asset_url"] or "placehold.co" in cue["asset_url"]:
+            else:
                 cue["asset_url"] = _get_fallback_icon_url(f"{aid} {cid} {desc}")
 
             # Progressive trigger time
@@ -706,6 +712,10 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
 </html>"""
 
     return html
+
+
+# Alias for backward compatibility
+render_custom_template = generate_video_html
 
 
 # ─── STANDALONE CLI ───────────────────────────────────────────────────────────

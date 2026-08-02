@@ -11,9 +11,13 @@ Jinja2-compatible, so pure rendering always works).
 
 import os
 import json
+import logging
+import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 from jinja2 import Template
+
+logger = logging.getLogger(__name__)
 
 THIS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = THIS_DIR.parents[3]  # ai-video-generation-app/
@@ -30,7 +34,7 @@ except ImportError:
 def normalize_model_name(raw_name: str) -> str:
     """Normalize user configured model name for CrewAI Google Gemini integration."""
     if not raw_name:
-        return "gemini/gemini-3.5-flash-lite"
+        return "gemini/gemini-pro-latest"
     clean = raw_name.strip()
     if clean.startswith("gemini/") or clean.startswith("google/"):
         return clean
@@ -138,15 +142,27 @@ def populate_scene_template(
 
     # ── Try LLM-assisted population ──
     if use_llm:
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("LITELLM_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        litellm_base = os.getenv("LITELLM_BASE_URL", "https://learner-os.sprints.ai/litellm/v1")
         if api_key and not api_key.startswith("your_") and "key_here" not in api_key and HAS_CREWAI:
-            raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash-lite")
+            os.environ["OPENAI_API_KEY"] = api_key
+            os.environ["OPENAI_API_BASE"] = litellm_base
+            raw_model = os.getenv("MODEL_NAME", "gemini/gemini-pro-latest")
             model_name = normalize_model_name(raw_model)
+
+            if not model_name.startswith("openai/"):
+                model_name = f"openai/{model_name}"
 
             max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    llm = LLM(model=model_name, api_key=api_key, temperature=0.05)
+                    llm_kwargs = {
+                        "model": model_name,
+                        "api_key": api_key,
+                        "base_url": litellm_base,
+                        "temperature": 0.05
+                    }
+                    llm = LLM(**llm_kwargs)
                     writer = Agent(
                         role="HTML5 Template Population Specialist",
                         goal="Populate Jinja2 HTML templates with scene data accurately without changing layout or inventing content.",
@@ -168,8 +184,16 @@ def populate_scene_template(
                     )
 
                     crew = Crew(agents=[writer], tasks=[task], process=Process.sequential)
-                    result = crew.kickoff()
-                    html_output = str(result.raw).strip()
+                    try:
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                            fut = pool.submit(lambda: asyncio.run(crew.kickoff_async()))
+                            result = fut.result(timeout=90)
+                    except Exception as k_err:
+                        logger.warning(f"CrewAI kickoff_async error: {k_err}. Using direct Jinja2 rendering.")
+                        return _render_template_jinja2(template_html, scene, plan_context)
+                    raw_text = getattr(result, "raw", None) or str(result)
+                    html_output = str(raw_text).strip()
 
                     # Clean potential markdown fences and Jinja comments
                     for fence in ["```html", "```jinja2", "```jinja", "```"]:

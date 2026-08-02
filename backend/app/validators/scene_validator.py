@@ -6,7 +6,7 @@ from ..config.quality import QualityRubric
 
 def _cap_score(score: float) -> int:
     """Ensure score is between 0 and 100, rounded."""
-    return int(round(min(100.0, max(0.0, score))))
+    return round(min(100.0, max(0.0, score)))
 
 def validate_scene_plan(
     script: Dict[str, Any],

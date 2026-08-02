@@ -40,12 +40,13 @@ class AudioService:
     def __init__(
         self,
         tts_provider: BaseTTSProvider,
-        storage_dir: str = "/tmp/audio_cache",
+        storage_dir: Optional[str] = None,
         supabase_client=None,
         storage_bucket: str = "audio-files",
     ):
+        import tempfile
         self.provider = tts_provider
-        self.storage_dir = storage_dir
+        self.storage_dir = storage_dir or os.path.join(tempfile.gettempdir(), "audio_cache")
         self.supabase = supabase_client
         self.storage_bucket = storage_bucket
         os.makedirs(self.storage_dir, exist_ok=True)
@@ -61,9 +62,10 @@ class AudioService:
     def _get_audio_duration(self, file_path: str) -> float:
         """
         Calculates exact audio duration in seconds.
-        Handles WAV files natively via Python's standard wave module.
+        Handles WAV files natively and MP3/AAC via ffprobe or size estimation.
         """
         try:
+            import wave
             with wave.open(file_path, "rb") as wave_file:
                 frames = wave_file.getnframes()
                 rate = wave_file.getframerate()
@@ -71,8 +73,24 @@ class AudioService:
                     return round(frames / float(rate), 2)
         except Exception:
             pass
-        # Fallback default estimation if non-WAV or stream format
-        return 1.0
+
+        try:
+            import subprocess, json
+            cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", file_path]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+            if res.returncode == 0:
+                data = json.loads(res.stdout)
+                dur = float(data.get("format", {}).get("duration", 0))
+                if dur > 0:
+                    return round(dur, 2)
+        except Exception:
+            pass
+
+        try:
+            sz = os.path.getsize(file_path)
+            return round(max(3.0, sz / 16000.0), 2)
+        except Exception:
+            return 5.0
 
     def _metadata_sidecar_path(self, cache_key: str) -> str:
         """
@@ -228,7 +246,14 @@ async def generate_voiceover(
     and it will default to GeminiTTSProvider with no Supabase upload.
     """
     segments = script_data.get("segments", [])
-    full_narration = " ".join(segment.get("narrator_text", "") for segment in segments)
+    narrations = [
+        (seg.get("narrator_text") or seg.get("text") or "").strip()
+        for seg in segments
+        if isinstance(seg, dict)
+    ]
+    full_narration = " ".join(n for n in narrations if n)
+    if not full_narration:
+        full_narration = script_data.get("title") or "AI Educational Video Overview"
 
     request = TTSRequest(
         video_id=script_data.get("video_id"),
