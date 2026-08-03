@@ -3,11 +3,15 @@
 <div class="centered-hero">
   {% set hero_cue = scene.visual_cues[0] if scene.visual_cues else None %}
   {% if hero_cue and hero_cue.asset_url %}
-  <div class="centered-hero-img-wrap">
-    <img src="{{ hero_cue.asset_url | safe }}"
-         alt="{{ hero_cue.description }}"
-         class="cue-asset centered-hero-img float-reverse"
-         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=140&height=140';" />
+  <div class="svg-embed-slot" data-svg-id="{{ scene.scene_id }}_centered_hero" data-author="Omar Khaled">
+    <!-- OMAR_KHALED_SVG_START -->
+    <div class="centered-hero-img-wrap">
+      <img src="{{ hero_cue.asset_url | safe }}"
+           alt="{{ hero_cue.description }}"
+           class="cue-asset centered-hero-img float-reverse"
+           onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=140&height=140';" />
+    </div>
+    <!-- OMAR_KHALED_SVG_END -->
   </div>
   {% endif %}
   {% if scene.visual_cues | length > 1 %}

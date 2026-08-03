@@ -171,6 +171,31 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 }}
 .glass-panel:hover{{transform:translateY(-4px);box-shadow:0 18px 40px rgba(0,0,0,0.1);}}
 
+/* ─── SVG Embedding Interface & Component Library ─── */
+.svg-embed-slot{{
+  display:inline-flex;align-items:center;justify-content:center;position:relative;
+}}
+.svg-embed-slot svg.concept-svg{{
+  width:clamp(200px,25vw,320px);height:auto;overflow:visible;
+}}
+
+.pillar-grid{{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;width:100%;max-width:900px;}}
+.dual-panel{{display:flex;align-items:center;justify-content:space-between;gap:40px;width:100%;max-width:950px;}}
+.dual-panel-visual{{flex:1;display:flex;justify-content:center;align-items:center;}}
+.dual-panel-content{{flex:1;text-align:left;}}
+.code-card{{background:#0f172a;color:#f8fafc;border-radius:12px;padding:20px;font-family:monospace;box-shadow:0 10px 30px rgba(0,0,0,0.2);}}
+.code-card .window-controls{{display:flex;gap:6px;margin-bottom:12px;}}
+.code-card .dot-ctrl{{width:10px;height:10px;border-radius:50%;}}
+.code-card .dot-red{{background:#ef4444;}}
+.code-card .dot-yellow{{background:#f59e0b;}}
+.code-card .dot-green{{background:#22c55e;}}
+.code-card .kw{{color:#38bdf8;font-weight:bold;}}
+.code-card .tp{{color:#a78bfa;}}
+.code-card .fn{{color:#4ade80;}}
+.code-card .lock-badge{{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,0.2);color:#34d399;border-radius:6px;font-size:12px;}}
+.medallion-wrap{{position:relative;display:flex;align-items:center;justify-content:center;width:180px;height:180px;border-radius:50%;background:var(--glass-bg);border:2px dashed var(--c1);animation:float 6s ease-in-out infinite;}}
+.takeaway-banner{{width:100%;max-width:850px;padding:16px 28px;background:var(--glass-bg);border:1px solid var(--c1);border-radius:16px;display:flex;align-items:center;justify-content:space-between;margin-top:24px;}}
+
 /* ─── Progress Dots ─── */
 #progress{{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:50;}}
 #progress .dot{{width:9px;height:9px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:all .3s ease;}}
@@ -389,15 +414,15 @@ def _build_shared_js(scenes_data_json: str) -> str:
     """Build the JS block for TTS scene playback with speech-driven transitions."""
     return f"""
 (function(){{
-  const scenesData = {scenes_data_json};
-
   let currentIdx = 0, isPlaying = false, stepTimer = null;
+  const scenesData = {scenes_data_json};
   const sceneEls = scenesData.map(s => document.getElementById(s.id));
   const dots = document.querySelectorAll("#progress .dot");
   const subtitleText = document.getElementById("subtitle-text");
   const startOverlay = document.getElementById("start-overlay");
   const startBtn = document.getElementById("start-btn");
   const replayBtn = document.getElementById("replay-btn");
+  const bgAudio = document.getElementById("intro-bg-music");
   const synth = window.speechSynthesis;
   let chosenVoice = null;
 
@@ -439,55 +464,59 @@ def _build_shared_js(scenes_data_json: str) -> str:
   function speakCurrentScene(){{
     const s = scenesData[currentIdx];
     const minHold = s.holdMs || 8000;
-    const isIntro = (s.template === 'intro' || s.template === 'template_intro' || currentIdx === 0);
+    const currentSceneEl = sceneEls[currentIdx];
+    const isIntro = (currentSceneEl && currentSceneEl.getAttribute("data-template") === "intro") || currentIdx === 0;
+
+    if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
 
     return new Promise(resolve => {{
       let speechDone = false;
       let holdDone = false;
-      const finish = () => {{
-        if(speechDone && holdDone) resolve();
-      }};
+      const finish = () => {{ if(speechDone && holdDone) resolve(); }};
 
-      // Safety timeout: holdMs + 15s max to prevent infinite hang
       const safetyTimer = setTimeout(() => {{
         speechDone = true; holdDone = true;
-        if(synth) try{{ synth.cancel(); }} catch(e){{}}
+        if(synth) try {{ synth.cancel(); }} catch(e){{}}
         resolve();
       }}, minHold + 15000);
 
-      // Minimum display time — always wait at least holdMs
       setTimeout(() => {{
         holdDone = true;
         finish();
       }}, minHold);
 
-      // TTS narration — intro scene is completely silent (no speaking)
-      if(synth && s.narration && !isIntro){{
-        try{{
-          synth.cancel();
-          const utter = new SpeechSynthesisUtterance(s.narration);
-          if(chosenVoice) utter.voice = chosenVoice;
-          utter.rate = 0.95;
-          utter.onend = () => {{
-            clearTimeout(safetyTimer);
-            speechDone = true;
-            finish();
-          }};
-          utter.onerror = () => {{
-            clearTimeout(safetyTimer);
-            speechDone = true;
-            finish();
-          }};
-          synth.speak(utter);
-        }} catch(err){{
-          clearTimeout(safetyTimer);
-          speechDone = true;
-          finish();
+      // --- SPRINT 4 TASK 4: INTRO MUSIC & TTS SUPPRESSION LOGIC ---
+      if(isIntro) {{
+        if(synth) try {{ synth.cancel(); }} catch(e){{}}
+        if(bgAudio) {{
+          bgAudio.currentTime = 0;
+          bgAudio.play().catch(err => console.log("Audio autoplay prevented:", err));
         }}
-      }} else {{
-        // Intro scene or no TTS available — silent hold
-        speechDone = true;
+        speechDone = true; // Speech bypassed during intro
         finish();
+      }} else {{
+        // Stop music if playing from scene 1
+        if(bgAudio && !bgAudio.paused) {{
+          bgAudio.pause();
+          bgAudio.currentTime = 0;
+        }}
+
+        // Standard TTS playback for Scene 2+
+        if(synth && s.narration){{
+          try {{
+            synth.cancel();
+            const utter = new SpeechSynthesisUtterance(s.narration);
+            if(chosenVoice) utter.voice = chosenVoice;
+            utter.rate = 0.95;
+            utter.onend = () => {{ clearTimeout(safetyTimer); speechDone = true; finish(); }};
+            utter.onerror = () => {{ clearTimeout(safetyTimer); speechDone = true; finish(); }};
+            synth.speak(utter);
+          }} catch(err){{
+            clearTimeout(safetyTimer); speechDone = true; finish();
+          }}
+        }} else {{
+          speechDone = true; finish();
+        }}
       }}
     }});
   }}
@@ -509,7 +538,7 @@ def _build_shared_js(scenes_data_json: str) -> str:
   }}
 
   function startAutoPlay(f){{ isPlaying = true; currentIdx = f||0; if(stepTimer) clearTimeout(stepTimer); stepSequence(); }}
-  function stopAutoPlay(){{ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) try{{ synth.cancel(); }} catch(e){{}} }}
+  function stopAutoPlay(){{ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) try{{ synth.cancel(); }} catch(e){{}} if(bgAudio) {{ bgAudio.pause(); }} }}
 
   dots.forEach((dot, idx) => {{ dot.addEventListener("click", () => {{ stopAutoPlay(); startOverlay.classList.add("hidden"); showScene(idx); }}); }});
   startBtn.addEventListener("click", () => {{ startOverlay.classList.add("hidden"); startAutoPlay(0); }});
@@ -686,6 +715,7 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
 
 <div id="page">
   <div id="video-frame">
+    <audio id="intro-bg-music" src="assets/intro_music.mp3" preload="auto"></audio>
 
     <div id="progress">
 {dots_html}

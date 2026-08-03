@@ -35,8 +35,9 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
     os.environ["OPENAI_API_KEY"] = api_key
     os.environ["OPENAI_API_BASE"] = litellm_base
 
+    from backend.app.config.model_config import format_model_for_litellm_proxy
     raw_model = os.getenv("MODEL_NAME", "gemini/gemini-pro-latest")
-    model_name = normalize_model_name(raw_model)
+    model_name = format_model_for_litellm_proxy(raw_model)
     title = scene_plan_dict.get("title", "Unknown Topic")
     
     # Extract unique assets needed
@@ -49,9 +50,6 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
                 
     if not assets_to_generate:
         return {}
-        
-    if not model_name.startswith("openai/"):
-        model_name = f"openai/{model_name}"
 
     llm_kwargs = {
         "model": model_name,

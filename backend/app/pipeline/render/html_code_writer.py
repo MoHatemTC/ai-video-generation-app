@@ -49,17 +49,33 @@ def _build_writer_prompt(scene: dict, template_html: str, plan_context: dict) ->
 You are the `html_code_writer` agent. Your objective is to populate self-contained HTML scene fragments for automated headless video capture via Playwright.
 
 ═══════════════════════════════════════════
-MANDATORY RENDERER COMPATIBILITY GUARDRAILS
+SPRINT 4 TASK 4 SPECIFICATIONS & COMPATIBILITY
 ═══════════════════════════════════════════
 
-1. CSS ANIMATIONS ONLY: Use CSS `@keyframes` and transitions exclusively. Prohibited: SMIL (<animate>), manual `requestAnimationFrame`, or external JS libraries (GSAP, Anime.js).
-2. SVG TRANSFORM SAFETY: NEVER place a CSS animated transform directly on an SVG element with a static `transform="translate(...)"`. Use nested group tags: outer `<g transform="...">` for position, inner `<g class="...">` for CSS animation.
-3. NO EMOJIS IN TEXT: Do NOT use raw emoji characters inside SVG/HTML `<text>` elements (headless Chromium lacks emoji fonts). Use inline vector icons/SVGs instead.
-4. NO BACKDROP-FILTER ON VIEWPORT: Do not use full-viewport `backdrop-filter` (causes Chromium state update deadlocks).
-5. INSTANT SCENE TRANSITIONS: Hard cuts between scenes, no multi-hundred millisecond crossfades.
-6. ANIMATION RESET CATEGORIZATION:
-   - Ambient/continuous motion: `.float`, `.float-reverse`, `.pulse-soft`
-   - One-shot entrances: `.fade-up`, `.pop-in`, `.slide-in-left`, `.slide-in-right`, `.scale-in`
+1. INTRO BG MUSIC & TTS SUPPRESSION:
+   - The intro scene (`data-template="intro"`) plays `#intro-bg-music` automatically.
+   - TTS narration is suppressed during intro scene. Narration resumes automatically on Scene 2+.
+
+2. SVG EMBEDDING INTERFACE (OMAR KHALED INTEGRATION):
+   - Wrap visual/concept vector assets in `.svg-embed-slot` containers:
+     `<div class="svg-embed-slot" data-svg-id="concept_name" data-author="Omar Khaled">`
+     `  <!-- OMAR_KHALED_SVG_START -->`
+     `  <svg class="concept-svg float" viewBox="0 0 300 300" fill="none" aria-label="Visual">`
+     `    ...`
+     `  </svg>`
+     `  <!-- OMAR_KHALED_SVG_END -->`
+     `</div>`
+   - Use CSS root color variables inside SVGs (`var(--c1)`, `var(--c2)`, `var(--c3)`, `var(--text)`, `var(--bg)`).
+
+3. MANDATORY RENDERER COMPATIBILITY RULES:
+   - CSS ANIMATIONS ONLY: Use CSS `@keyframes` and transitions exclusively. Prohibited: SMIL (`<animate>`), manual `requestAnimationFrame`, GSAP, or Anime.js.
+   - SVG TRANSFORM SAFETY: NEVER place a CSS animated transform directly on an SVG element with static `transform="translate(...)"`. Use double-nested `<g>` tags: outer `<g transform="...">` static position, inner `<g class="...">` for CSS animation target.
+   - EMOJI PROHIBITION: Do NOT use raw emoji characters inside SVG or HTML `<text>` nodes. Use vector shapes/icons instead.
+   - NO VIEWPORT BACKDROP-FILTER: Do not use viewport-wide `backdrop-filter` effects.
+   - INSTANT SCENE CUTS: Hard scene transitions without multi-hundred-millisecond crossfades.
+   - ANIMATION RESET CATEGORIZATION:
+     • Continuous loops: `.float`, `.float-reverse`, `.pulse-soft`
+     • One-shot entrances: `.fade-up`, `.pop-in`, `.slide-in-left`, `.slide-in-right`, `.scale-in`
 
 ═══════════════════════════════════════════
 TEMPLATE POPULATION RULES
@@ -158,11 +174,9 @@ def populate_scene_template(
         if api_key and not api_key.startswith("your_") and "key_here" not in api_key and HAS_CREWAI:
             os.environ["OPENAI_API_KEY"] = api_key
             os.environ["OPENAI_API_BASE"] = litellm_base
-            raw_model = os.getenv("MODEL_NAME", "gemini/gemini-pro-latest")
-            model_name = normalize_model_name(raw_model)
-
-            if not model_name.startswith("openai/"):
-                model_name = f"openai/{model_name}"
+            from backend.app.config.model_config import format_model_for_litellm_proxy
+            raw_model = os.getenv("MODEL_NAME", "gemini/gemini-2.0-flash")
+            model_name = format_model_for_litellm_proxy(raw_model)
 
             max_retries = 3
             for attempt in range(max_retries):
