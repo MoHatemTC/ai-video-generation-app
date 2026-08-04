@@ -5,6 +5,13 @@ from backend.app.schemas.asset import AssetItem
 
 pytestmark = pytest.mark.asyncio(loop_scope="function")
 
+@pytest.mark.asyncio
+@patch("backend.app.services.assets.images.Crew.kickoff")
+async def test_process_scene_elements_success(mock_kickoff):
+    mock_result = MagicMock()
+    mock_result.raw = "An ultra-detailed digital illustration."
+    mock_kickoff.return_value = mock_result
+
 
 @pytest.mark.asyncio
 @patch('backend.app.services.assets.images.AssetService')
@@ -156,6 +163,18 @@ class TestAssetServiceQualityEvaluation:
         assert self.service._evaluate_prompt_quality(bad_prompt) is False
 
 @pytest.mark.asyncio
+@patch("backend.app.services.assets.images.Crew.kickoff")
+async def test_process_scene_elements_fallback_on_failure(mock_kickoff):
+    mock_kickoff.side_effect = Exception("Mock LLM error")
+    mock_scene_data = {
+        "video_id": "video_test_fallback",
+        "scenes": [{"scene_id": "scene_2", "visual_elements": [{"cue_id": "cue_2", "asset_id": "image_2"}]}]
+    }
+
+    result = await process_scene_elements(mock_scene_data)
+    assert result["assets"][0]["asset_id"] == "image_2"
+
+
 async def test_resolve_visual_cue_fallback_on_quality_fail():
     """
     Test that resolve_visual_cue reverts to a safe, basic prompt
@@ -186,3 +205,4 @@ async def test_resolve_visual_cue_fallback_on_quality_fail():
         expected_fallback_prompt = f"flat 2d illustration, {test_cue}, no text, no shadows"
         assert result_asset.prompt == expected_fallback_prompt
         assert result_asset.prompt_used == expected_fallback_prompt
+

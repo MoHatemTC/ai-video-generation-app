@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+import uuid
+from typing import Dict, Any, Optional
 from supabase import Client
 import supabase
 
@@ -12,60 +14,87 @@ from backend.app.schemas.timestamps import AudioTrack
 from backend.app.services.assets.images import process_scene_elements
 from backend.app.agents.planner import ScenePlanner
 from backend.app.agents.director import SceneDirector
+from backend.app.pipeline.render.render_custom import generate_video_html
 
 from backend.app.config.model_config import get_planner_config, get_fallback_config
 
 logger = logging.getLogger(__name__)
 
-# --- THE MAIN BRAIN ---
-async def process_video_job(job_id: str, prompt: str, supabase: Client):
+
+def _safe_db_update(supabase_client: Optional[Client], table: str, payload: dict, job_id: str):
+    """Safely perform DB updates if Supabase client is available."""
+    if supabase_client:
+        try:
+            supabase_client.table(table).update(payload).eq("id", job_id).execute()
+        except Exception as err:
+            logger.warning(f"[{job_id}] DB update failed (non-critical): {err}")
+
+
+async def process_video_job(
+    prompt: str,
+    job_id: Optional[str] = None,
+    supabase_client: Optional[Client] = None
+) -> Dict[str, Any]:
+    # Auto-generate job_id if not supplied
+    job_id = job_id or str(uuid.uuid4())
+
     current_stage = "init"
-    
+    result_payload: Dict[str, Any] = {
+        "job_id": job_id,
+        "status": "pending",
+        "script_data": None,
+        "scene_data": None,
+        "audio_metadata": None,
+        "timestamp_data": None,
+        "asset_data": None,
+        "video_url": None,
+        "error_message": None
+    }
+
     try:
         logger.info(f"Starting pipeline for Job: {job_id}")
 
-        # STAGE 1: Script Generation (Ahmed)
+        # STAGE 1: Script Generation
         current_stage = "script_generation"
-        supabase.table("videos").update({"status": "generating_script"}).eq("id", job_id).execute()
+        _safe_db_update(supabase_client, "videos", {"status": "generating_script"}, job_id)
         logger.info(f"[{job_id}] Running Stage 1: Script Agent...")
-        
+
         script_data = await generate_script(prompt)
-        # Handle both Pydantic models and raw dicts gracefully
-        script_dict = script_data.model_dump() if hasattr(script_data, 'model_dump') else script_data
+        if hasattr(script_data, 'model_dump'):
+            script_dict: dict[str, Any] = script_data.model_dump()
+        else:
+            script_dict = dict(script_data)
         script_dict["video_id"] = job_id
-        supabase.table("videos").update({"script_data": script_dict}).eq("id", job_id).execute()
+        result_payload["script_data"] = script_dict
+        _safe_db_update(supabase_client, "videos", {"script_data": script_dict}, job_id)
         logger.info(f"[{job_id}] Stage 1 Complete!")
-        #################################################################################################
-        # --- STAGE 2: Scene Planner (Mostafa's Real Code) ---
+
+        # STAGE 2: Scene Planner & Director
         current_stage = "planner"
-        supabase.table("videos").update({"status": "planning_scenes"}).eq("id", job_id).execute()
-        
-        # 1. Instantiate the agents with primary and fallback configs
+        _safe_db_update(supabase_client, "videos", {"status": "planning_scenes"}, job_id)
+
         primary_config = get_planner_config()
         fallback_config = get_fallback_config()
-        
+
         planner_agent = ScenePlanner(
-            model_name=primary_config["model_name"],
+            model_name=primary_config.get("model_name") or "gemini/gemini-pro-latest",
             api_key=primary_config["api_key"],
             base_url=primary_config["base_url"],
             fallback_config=fallback_config
         )
-        
+
         director_agent = SceneDirector(
-            model_name=primary_config["model_name"],
+            model_name=primary_config.get("model_name") or "gemini/gemini-pro-latest",
             api_key=primary_config["api_key"],
             base_url=primary_config["base_url"],
             fallback_config=fallback_config
         )
-        
-        # 2. Plan the scenes
+
         scene_plan_pydantic = await planner_agent.plan_scenes(script_dict)
-        
-        # 3. Evaluate Quality
+
         logger.info(f"[{job_id}] Evaluating scene plan quality...")
         quality_report = await director_agent.evaluate(script_dict, scene_plan_pydantic)
-        
-        # 4. Revise if failed
+
         if not quality_report.passed:
             logger.info(f"[{job_id}] Quality check failed (Score: {quality_report.overall_score}). Revising...")
             scene_plan_pydantic = await planner_agent.revise_scenes(
@@ -74,74 +103,102 @@ async def process_video_job(job_id: str, prompt: str, supabase: Client):
             logger.info(f"[{job_id}] Revision complete.")
         else:
             logger.info(f"[{job_id}] Quality check passed (Score: {quality_report.overall_score})!")
-        
-        # 5. Convert to dict and save
+
         scene_data_dict = scene_plan_pydantic.model_dump()
-        supabase.table("videos").update({"scene_data": scene_data_dict}).eq("id", job_id).execute()
+        result_payload["scene_data"] = scene_data_dict
+        _safe_db_update(supabase_client, "videos", {"scene_data": scene_data_dict}, job_id)
         logger.info(f"[{job_id}] Stage 2 Complete!")
 
-        # --- STAGE 3: Audio Generation ---
+        # STAGE 3: Audio Generation
         current_stage = "audio"
-        supabase.table("videos").update({"status": "generating_audio"}).eq("id", job_id).execute()
-        # Use AudioService for caching and Supabase upload
+        _safe_db_update(supabase_client, "videos", {"status": "generating_audio"}, job_id)
+
         audio_metadata = await generate_voiceover(
             script_data=script_dict,
-            supabase_client=supabase
+            supabase_client=supabase_client
         )
-        
-        # Keep local path reference for AlignmentService (Stage 4)
-        audio_path = audio_metadata.get("local_path", audio_metadata.get("audio_file_path", ""))
-        
-        supabase.table("videos").update({
-            "audio_metadata": audio_metadata
-        }).eq("id", job_id).execute()
 
-        # STAGE 4: Alignment / WhisperX (Osama)
+        audio_path: str = str(audio_metadata.get("local_path") or audio_metadata.get("audio_file_path") or "")
+        result_payload["audio_metadata"] = audio_metadata
+        _safe_db_update(supabase_client, "videos", {"audio_metadata": audio_metadata}, job_id)
+        logger.info(f"[{job_id}] Stage 3 Complete!")
+
+        # STAGE 4: Alignment / WhisperX
         current_stage = "alignment"
-        supabase.table("videos").update({"status": "aligning_timestamps"}).eq("id", job_id).execute()
-        
+        _safe_db_update(supabase_client, "videos", {"status": "aligning_timestamps"}, job_id)
+
         aligner = AlignmentService()
         audio_track = AudioTrack(audio_id=job_id, audio_path=audio_path, language="en")
-        
-        # CORRECTED: Use to_thread to handle synchronous heavy processing
+
         timestamp_data = await asyncio.to_thread(
-            aligner.align, 
-            script=script_data, 
-            audio_track=audio_track, 
+            aligner.align,
+            script=script_data,
+            audio_track=audio_track,
             video_id=job_id
         )
-        
-        timestamp_dict = timestamp_data.model_dump() if hasattr(timestamp_data, 'model_dump') else timestamp_data
-        supabase.table("videos").update({"timestamp_data": timestamp_dict}).eq("id", job_id).execute()
+
+        if hasattr(timestamp_data, 'model_dump'):
+            timestamp_dict: dict[str, Any] = timestamp_data.model_dump()
+        else:
+            timestamp_dict = dict(timestamp_data)
+        result_payload["timestamp_data"] = timestamp_dict
+        _safe_db_update(supabase_client, "videos", {"timestamp_data": timestamp_dict}, job_id)
         logger.info(f"[{job_id}] Stage 4 Complete!")
-        #################################################################################################
-        # --- STAGE 5: Assets (Omar El Daly) ---
+
+        # STAGE 5: Assets
         current_stage = "assets"
-        supabase.table("videos").update({"status": "fetching_assets"}).eq("id", job_id).execute()
+        _safe_db_update(supabase_client, "videos", {"status": "fetching_assets"}, job_id)
         logger.info(f"[{job_id}] Running Stage 5: Asset Service...")
-        
-        # FIX: Pass the dictionary (scene_data_dict), NOT the Pydantic object!
-        asset_data = await process_scene_elements(scene_data_dict, supabase_client=supabase)
-        
-        supabase.table("videos").update({"asset_data": asset_data}).eq("id", job_id).execute()
+
+        asset_data = await process_scene_elements(scene_data_dict, supabase_client=supabase_client)
+        result_payload["asset_data"] = asset_data
+        _safe_db_update(supabase_client, "videos", {"asset_data": asset_data}, job_id)
         logger.info(f"[{job_id}] Stage 5 Complete!")
-        #################################################################################################
-        # --- ARCHITECTURE PIVOT ---
-        # Stages 6 (Composition), 7 (Animation), and 8 (Render) are now handled by the React Frontend!
-        # We mark the backend job as fully completed here.
-        
-        supabase.table("videos").update({
+
+        # STAGE 6: Render Engine
+        current_stage = "render"
+        _safe_db_update(supabase_client, "videos", {"status": "rendering"}, job_id)
+        logger.info(f"[{job_id}] Running Stage 6: Render Engine...")
+
+        from backend.app.pipeline.render.mp4_renderer import render_scene_plan_to_mp4
+
+        async def _render_to_outputs(scene_data: dict, asset_data: dict) -> str:
+            rendered_html = generate_video_html(scene_data, asset_data)
+            output_dir = os.path.join(os.getcwd(), "data", "renders")
+            os.makedirs(output_dir, exist_ok=True)
+            
+            html_path = os.path.join(output_dir, f"{job_id}.html")
+            with open(html_path, "w", encoding="utf-8") as f:
+                f.write(rendered_html)
+
+            mp4_path = os.path.join(output_dir, f"{job_id}.mp4")
+            try:
+                await render_scene_plan_to_mp4(scene_data, audio_path=audio_path, output_mp4_path=mp4_path, html_path=html_path)
+            except Exception as mp4_err:
+                logger.warning(f"[{job_id}] MP4 rendering warning: {mp4_err}")
+
+            return f"/renders/{job_id}.html"
+
+        video_url = await _render_to_outputs(scene_data_dict, asset_data)
+        result_payload["video_url"] = video_url
+        result_payload["status"] = "completed"
+        logger.info(f"[{job_id}] Stage 6 Complete!")
+
+        _safe_db_update(supabase_client, "videos", {
             "status": "completed",
-            # We will generate the interactive web URL on the frontend, but we can return a success flag here
-            "video_url": "web_render_ready" 
-        }).eq("id", job_id).execute()
-        
-        logger.info(f"Job {job_id} successfully prepared for Web Rendering!")
+            "video_url": video_url
+        }, job_id)
+
+        logger.info(f"Job {job_id} successfully completed!")
+        return result_payload
 
     except Exception as e:
         error_message = f"[{current_stage}] {str(e)}"
         logger.error(f"Pipeline Failed for Job {job_id}: {error_message}", exc_info=True)
-        supabase.table("videos").update({
-            "status": "failed", 
+        result_payload["status"] = "failed"
+        result_payload["error_message"] = error_message
+        _safe_db_update(supabase_client, "videos", {
+            "status": "failed",
             "error_message": error_message
-        }).eq("id", job_id).execute()
+        }, job_id)
+        return result_payload

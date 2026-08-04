@@ -150,7 +150,10 @@ class AssetService:
     async def resolve_visual_cue(
         self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str, supabase_client: Any = None
     ) -> AssetItem:
+        # Pull the model string from the .env file, default to openrouter/free
+        model_string = os.getenv("OPENROUTER_MODEL", "openrouter/free")
         llm_client = self._get_llm_client()
+
 
         # If we could not get a valid LLM client, do not attempt to run the crew.
         # Go straight to the fallback prompt. This prevents downstream errors.
@@ -198,11 +201,37 @@ class AssetService:
 
         # Construct Pollinations image URL from the final optimized prompt
         try:
+            design_director = Agent(
+                role="Educational Visual Design Director",
+                goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
+                backstory="You are an expert visual layout designer at Sprints Video Studio.",
+                verbose=False,
+                allow_delegation=False,
+                llm=model_string
+            )
+
+            refinement_task = Task(
+                description=f"Refine this cue into an image generator prompt: '{cue}'",
+                expected_output="A single optimized prompt string.",
+                agent=design_director
+            )
+
+            my_crew = Crew(agents=[design_director], tasks=[refinement_task])
+            
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(None, my_crew.kickoff)
+            optimized_prompt = result if isinstance(result, str) else str(result).strip()
+            
+        except Exception as e:
+            logger.warning(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
+            optimized_prompt = f"Illustration showing: {cue}"
+
+        # Construct Pollinations image URL from the final optimized prompt
+        try:
             image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(optimized_prompt)}?width=1280&height=720&model=flux&nologo=true"
         except Exception:
             image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(str(optimized_prompt))}?width=1280&height=720&model=flux&nologo=true"
 
-        # If Supabase client is provided, download the pollinations image and upload it to Supabase Storage
         if supabase_client is not None:
             try:
                 req = urllib.request.Request(
@@ -237,13 +266,18 @@ class AssetService:
             except Exception as upload_err:
                 logger.error(f"Failed to upload image {asset_id} to Supabase. Falling back to direct URL. Error: {upload_err}", exc_info=True)
 
+        final_url = str(image_url or "")
+
         asset = AssetItem(
             asset_id=asset_id,
             scene_reference=scene_id,
+            scene_id=scene_id,
             cue_reference=cue_id,
+            cue_id=cue_id,
             asset_type="image",
-            url=image_url,
+            url=final_url,
             prompt=optimized_prompt,
+            description=optimized_prompt,
             source="generated",
             asset_license="open-source",
             element=cue,
@@ -266,9 +300,10 @@ async def process_scene_elements(scene_data: Dict[str, Any], supabase_client: An
 
     for scene in scenes:
         scene_id = scene.get("scene_id", "")
-        visual_elements = scene.get("visual_elements", scene.get("visual_cues", []))
+        visual_elements = scene.get("visual_cues") or scene.get("visual_elements") or []
 
         for element in visual_elements:
+
             element_type = element.get("element_type")
             # Skip pure text elements unless they provide an explicit asset_id
             if element_type == "text" and "asset_id" not in element:

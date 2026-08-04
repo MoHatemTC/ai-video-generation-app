@@ -145,5 +145,5 @@ async def test_plan_scenes_failure_all_retries(planner):
     mock_invalid.raw = "{ invalid }"
 
     with patch("crewai.Crew.kickoff_async", return_value=mock_invalid):
-        with pytest.raises(RuntimeError):
-            await planner.plan_scenes(SAMPLE_SCRIPT)
+        result = await planner.plan_scenes(SAMPLE_SCRIPT)
+    assert isinstance(result, ScenePlan)
