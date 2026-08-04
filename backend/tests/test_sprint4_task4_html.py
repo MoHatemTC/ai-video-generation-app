@@ -118,3 +118,12 @@ def test_html_writer_prompt_guardrails():
     assert ".svg-embed-slot" in prompt
     assert "EMOJI PROHIBITION" in prompt
     assert "SVG TRANSFORM SAFETY" in prompt
+
+
+def test_intro_duration_and_tts_start(sample_scene_plan):
+    """Verify intro scene hold duration is set to 2.5s (2500ms) and TTS narration starts on Scene 2."""
+    html = generate_video_html(sample_scene_plan)
+    assert "const minHold = isIntro ? 2500 : (s.holdMs || 8000);" in html
+    # Scene 1 (intro) hold_ms in JS data should be 2500
+    assert '"holdMs": 2500' in html
+

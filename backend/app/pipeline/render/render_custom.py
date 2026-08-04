@@ -463,9 +463,9 @@ def _build_shared_js(scenes_data_json: str) -> str:
 
   function speakCurrentScene(){{
     const s = scenesData[currentIdx];
-    const minHold = s.holdMs || 8000;
     const currentSceneEl = sceneEls[currentIdx];
     const isIntro = (currentSceneEl && currentSceneEl.getAttribute("data-template") === "intro") || currentIdx === 0;
+    const minHold = isIntro ? 2500 : (s.holdMs || 8000);
 
     if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
 
@@ -631,12 +631,16 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
                     spacing = min(1.0, max(0.4, (scene_duration * 0.45) / (num_cues - 1)))
                     cue["trigger_time_seconds"] = round(0.15 + idx * spacing, 2)
 
-    # 4b. Auto-calculate hold_ms from narration word count
-    for scene in plan.get("scenes", []):
-        narration = scene.get("text", "")
-        estimated_ms = _estimate_speech_ms(narration)
-        current_hold = scene.get("hold_ms") or 6000
-        scene["hold_ms"] = max(current_hold, estimated_ms)
+    # 4b. Auto-calculate hold_ms from narration word count (Intro capped to 2.5s)
+    for idx, scene in enumerate(plan.get("scenes", [])):
+        is_intro = (scene.get("template") == "intro") or (idx == 0)
+        if is_intro:
+            scene["hold_ms"] = 2500
+        else:
+            narration = scene.get("text", "")
+            estimated_ms = _estimate_speech_ms(narration)
+            current_hold = scene.get("hold_ms") or 6000
+            scene["hold_ms"] = max(current_hold, estimated_ms)
 
     # 5. Validate against Pydantic schema
     try:
