@@ -17,7 +17,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 THIS_DIR = Path(__file__).resolve().parent
-load_dotenv(THIS_DIR / ".env")
+PROJECT_ROOT = THIS_DIR.parents[3]
+load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv()
 
 try:
     from crewai import Agent, Task, Crew, Process, LLM
@@ -29,7 +31,7 @@ except ImportError:
 def normalize_model_name(raw_name: str) -> str:
     """Normalize user configured model name for CrewAI Google Gemini integration."""
     if not raw_name:
-        return "gemini/gemini-3.5-flash"
+        return "gemini/gemini-pro-latest"
     clean = raw_name.strip()
     if clean.startswith("gemini/") or clean.startswith("google/"):
         return clean
@@ -174,21 +176,34 @@ Do NOT omit code. Return the entire, instantly-renderable HTML document.
 # ─── MAIN GENERATION ───────────────────────────────────────────────────────────
 
 def generate_template_with_crewai(scene_plan_dict: dict) -> str:
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("LITELLM_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    litellm_base = os.getenv("LITELLM_BASE_URL", "https://learner-os.sprints.ai/litellm/v1")
     if not api_key or api_key.startswith("your_") or "key_here" in api_key:
-        print("[NOTICE] No valid GEMINI_API_KEY set in .env. Using smart fallback template.")
+        print("[NOTICE] No valid LITELLM_API_KEY or GEMINI_API_KEY set in .env. Using smart fallback template.")
         return generate_fallback_custom_template(scene_plan_dict)
 
     if not HAS_CREWAI:
         print("[NOTICE] crewai not installed. Using smart fallback template.")
         return generate_fallback_custom_template(scene_plan_dict)
 
-    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash")
+    os.environ["OPENAI_API_KEY"] = api_key
+    os.environ["OPENAI_API_BASE"] = litellm_base
+
+    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-pro-latest")
     model_name = normalize_model_name(raw_model)
+    litellm_base = os.getenv("LITELLM_BASE_URL")
+
+    if litellm_base or (api_key and api_key.startswith("sk-")):
+        if not model_name.startswith("openai/"):
+            model_name = f"openai/{model_name}"
+
     print(f"[AGENT] Initializing CrewAI with Gemini LLM ({model_name})...")
 
     try:
-        llm = LLM(model=model_name, api_key=api_key, temperature=0.1)
+        llm_kwargs = {"model": model_name, "api_key": api_key, "temperature": 0.1}
+        if litellm_base:
+            llm_kwargs["base_url"] = litellm_base
+        llm = LLM(**llm_kwargs)
         architect = Agent(
             role="Senior Motion Graphics Engineer & HTML5 Animation Architect",
             goal="Generate flawless, production-ready HTML5 animated videos based on JSON, utilizing provided asset URLs and strict TTS timing.",
@@ -228,7 +243,8 @@ def generate_template_with_crewai(scene_plan_dict: dict) -> str:
         crew = Crew(agents=[architect], tasks=[task], process=Process.sequential)
         print("[AGENT] CrewAI task execution started...")
         result = crew.kickoff()
-        template_code = str(result.raw)
+        raw_text = getattr(result, "raw", None) or str(result)
+        template_code = str(raw_text)
 
         # Clean up any potential markdown formatting the LLM still tries to apply
         for fence in ["```html", "```jinja2", "```jinja", "```"]:

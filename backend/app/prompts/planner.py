@@ -37,10 +37,12 @@ For every narration segment:
 Rules:
 - Every scene must reference one or more script segments.
 - Every visual cue must reference exactly one segment.
+- Every visual cue MUST have a valid element_type: one of "text", "image", "diagram", "icon", "gif", "video", "svg". NEVER use "animation", "background", "interactive", or other values.
+- Every visual cue MUST have a valid preferred_region: one of "top", "bottom", "left", "right", "center", "background", "top-left", "top-right", "bottom-left", "bottom-right", "middle".
 - Use only assets provided in the assets input.
 - If no asset exists, create a text cue instead.
 - Avoid clutter.
-- Prefer one primary visual and at most two secondary visuals.
+- Every scene MUST contain AT LEAST 2 visual cues (1 primary visual and at least 1 secondary visual/icon). Never produce a scene with only 1 visual cue.
 - Visuals must reinforce the narration rather than duplicate it.
 - Keep layouts consistent across consecutive scenes whenever possible.
 - Return only the JSON object matching the schema.
@@ -84,6 +86,8 @@ Your responsibility is to **update the Scene Plan** by applying **only** these i
 - Do NOT change scene ordering.
 - Do NOT modify scene IDs.
 - Do NOT modify cue IDs unless explicitly instructed.
+- Every visual cue MUST have a valid element_type: one of "text", "image", "diagram", "icon", "gif", "video", "svg". NEVER use "animation", "background", "interactive", or other values.
+- Every visual cue MUST have a valid preferred_region: one of "top", "bottom", "left", "right", "center", "background", "top-left", "top-right", "bottom-left", "bottom-right", "middle".
 - Return a complete, schema‑valid ScenePlan JSON.
 - Ensure the final output is a valid JSON object matching the ScenePlan schema.
 

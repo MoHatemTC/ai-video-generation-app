@@ -15,7 +15,7 @@ except ImportError:
 
 def normalize_model_name(raw_name: str) -> str:
     if not raw_name:
-        return "gemini/gemini-3.5-flash"
+        return "gemini/gemini-pro-latest"
     clean = raw_name.strip()
     if clean.startswith("gemini/") or clean.startswith("google/"):
         return clean
@@ -26,12 +26,16 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
     """
     Returns a dict mapping asset_id -> Iconify API URL string.
     """
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("LITELLM_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    litellm_base = os.getenv("LITELLM_BASE_URL", "https://learner-os.sprints.ai/litellm/v1")
     if not api_key or not HAS_CREWAI:
         print("[NOTICE] CrewAI or API key not found. Skipping SVG asset generation.")
         return {}
 
-    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash")
+    os.environ["OPENAI_API_KEY"] = api_key
+    os.environ["OPENAI_API_BASE"] = litellm_base
+
+    raw_model = os.getenv("MODEL_NAME", "gemini/gemini-pro-latest")
     model_name = normalize_model_name(raw_model)
     title = scene_plan_dict.get("title", "Unknown Topic")
     
@@ -46,7 +50,16 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
     if not assets_to_generate:
         return {}
         
-    llm = LLM(model=model_name, api_key=api_key, temperature=0.2)
+    if not model_name.startswith("openai/"):
+        model_name = f"openai/{model_name}"
+
+    llm_kwargs = {
+        "model": model_name,
+        "api_key": api_key,
+        "base_url": litellm_base,
+        "temperature": 0.2
+    }
+    llm = LLM(**llm_kwargs)
     illustrator = Agent(
         role="Senior Iconographer & API Specialist",
         goal="Determine the most appropriate HTTPS icon URL (e.g. Iconify API) for each visual cue requested in the video.",
@@ -54,7 +67,7 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
             "You are a master at selecting the perfect vector icons for technical explainer videos. "
             "You map abstract concepts to real, professional icons using the Iconify API (https://api.iconify.design/)."
         ),
-        verbose=True,
+        verbose=False,
         allow_delegation=False,
         llm=llm
     )
@@ -91,8 +104,13 @@ def generate_assets_with_crewai(scene_plan_dict: dict) -> dict:
     crew = Crew(agents=[illustrator], tasks=[asset_generation_task], process=Process.sequential)
     print(f"[ASSET AGENT] Generating {len(assets_to_generate)} Iconify URLs...")
     try:
-        result = crew.kickoff()
-        output = str(result.raw).strip()
+        import asyncio
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            fut = pool.submit(lambda: asyncio.run(crew.kickoff_async()))
+            result = fut.result(timeout=90)
+        raw_text = getattr(result, "raw", None) or str(result)
+        output = str(raw_text).strip()
         if output.startswith("```json"):
             output = output[7:]
         elif output.startswith("```"):

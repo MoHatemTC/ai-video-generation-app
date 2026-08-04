@@ -40,12 +40,13 @@ class AudioService:
     def __init__(
         self,
         tts_provider: BaseTTSProvider,
-        storage_dir: str = "/tmp/audio_cache",
+        storage_dir: Optional[str] = None,
         supabase_client=None,
         storage_bucket: str = "audio-files",
     ):
+        import tempfile
         self.provider = tts_provider
-        self.storage_dir = storage_dir
+        self.storage_dir = storage_dir or os.path.join(tempfile.gettempdir(), "audio_cache")
         self.supabase = supabase_client
         self.storage_bucket = storage_bucket
         os.makedirs(self.storage_dir, exist_ok=True)
@@ -61,9 +62,10 @@ class AudioService:
     def _get_audio_duration(self, file_path: str) -> float:
         """
         Calculates exact audio duration in seconds.
-        Handles WAV files natively via Python's standard wave module.
+        Handles WAV files natively and MP3/AAC via ffprobe or size estimation.
         """
         try:
+            import wave
             with wave.open(file_path, "rb") as wave_file:
                 frames = wave_file.getnframes()
                 rate = wave_file.getframerate()
@@ -71,8 +73,24 @@ class AudioService:
                     return round(frames / float(rate), 2)
         except Exception:
             pass
-        # Fallback default estimation if non-WAV or stream format
-        return 1.0
+
+        try:
+            import subprocess, json
+            cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", file_path]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+            if res.returncode == 0:
+                data = json.loads(res.stdout)
+                dur = float(data.get("format", {}).get("duration", 0))
+                if dur > 0:
+                    return round(dur, 2)
+        except Exception:
+            pass
+
+        try:
+            sz = os.path.getsize(file_path)
+            return round(max(3.0, sz / 16000.0), 2)
+        except Exception:
+            return 5.0
 
     def _metadata_sidecar_path(self, cache_key: str) -> str:
         """
@@ -109,6 +127,9 @@ class AudioService:
         ultimately the orchestrator's try/except) can mark the job failed
         and retry, rather than silently pretending the upload succeeded.
         """
+        if not self.supabase:
+            raise ValueError("Supabase client is not configured for AudioService.")
+
         with open(file_path, "rb") as f:
             file_bytes = f.read()
 
@@ -129,10 +150,9 @@ class AudioService:
         # supabase-py has returned either a plain string or a dict
         # depending on version - handle both defensively.
         if isinstance(public_url_response, dict):
-            return public_url_response.get("publicUrl") or public_url_response.get(
-                "public_url"
-            )
-        return public_url_response
+            res = public_url_response.get("publicUrl") or public_url_response.get("public_url")
+            return str(res or "")
+        return str(public_url_response or "")
 
     async def generate_audio_track(self, request: TTSRequest) -> AudioTrack:
         """
@@ -226,7 +246,14 @@ async def generate_voiceover(
     and it will default to GeminiTTSProvider with no Supabase upload.
     """
     segments = script_data.get("segments", [])
-    full_narration = " ".join(segment["text"] for segment in segments)
+    narrations = [
+        (seg.get("narrator_text") or seg.get("text") or "").strip()
+        for seg in segments
+        if isinstance(seg, dict)
+    ]
+    full_narration = " ".join(n for n in narrations if n)
+    if not full_narration:
+        full_narration = script_data.get("title") or "AI Educational Video Overview"
 
     request = TTSRequest(
         video_id=script_data.get("video_id"),
@@ -242,9 +269,13 @@ async def generate_voiceover(
 
     track = await service.generate_audio_track(request)
 
+    cache_key = service._generate_cache_key(request)
+    local_path = os.path.join(service.storage_dir, f"{cache_key}.wav")
+
     return {
         "video_id": track.video_id,
         "audio_file_path": track.audio_file_path,
         "duration_seconds": track.duration_seconds,
         "voice_used": track.voice_used,
+        "local_path": local_path,
     }
