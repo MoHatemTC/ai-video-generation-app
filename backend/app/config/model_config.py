@@ -4,19 +4,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Primary model: strongest available Gemini via the Sprints LiteLLM proxy ──
-PRIMARY_MODEL = "gemini/gemini-2.0-flash"
+PRIMARY_MODEL = "gemini/gemini-flash-latest"
 # ── Fallback model: lighter, proven-reliable Gemini via the same proxy ──
-FALLBACK_MODEL = "gemini/gemini-2.0-flash"
+FALLBACK_MODEL = "gemini/gemini-pro-latest"
 
 def format_model_for_litellm_proxy(model: str) -> str:
     clean = (model or "").strip()
-    if clean.startswith("gemini/"):
+    if clean.startswith("openai/gemini/"):
         return clean
     if clean.startswith("openai/"):
         clean = clean.replace("openai/", "", 1)
-    if clean.startswith("google/"):
-        clean = clean.replace("google/", "", 1)
-    return f"gemini/{clean}"
+    if not clean.startswith("gemini/"):
+        clean = f"gemini/{clean}"
+    return f"openai/{clean}"
 
 
 def get_planner_config():
