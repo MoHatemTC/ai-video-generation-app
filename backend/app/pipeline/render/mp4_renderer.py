@@ -162,10 +162,13 @@ async def render_scene_plan_to_mp4(scene_data: Dict[str, Any], audio_path: str, 
         total_words = sum(scene_word_counts)
 
         for idx, scene in enumerate(scenes):
+            is_intro = (scene.get("template") == "intro") or (idx == 0)
             # Check if explicit start/end alignment timestamps exist
             s_time = scene.get("start_time")
             e_time = scene.get("end_time")
-            if s_time is not None and e_time is not None and float(e_time) > float(s_time):
+            if is_intro:
+                duration_sec = 2.5
+            elif s_time is not None and e_time is not None and float(e_time) > float(s_time):
                 duration_sec = round(float(e_time) - float(s_time), 2)
             elif audio_duration > 0 and total_words > 0:
                 # Calculate duration proportional to narration word count

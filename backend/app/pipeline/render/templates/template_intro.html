@@ -14,32 +14,39 @@
       {{ plan.title or "Intro" }}
     </div>
 
-    <div class="cloud-wrap">
-      <svg viewBox="0 0 340 260" fill="none">
-        <path d="M55 150
-                 C30 148 18 128 30 112
-                 C20 96 34 74 58 76
-                 C60 52 88 36 112 48
-                 C122 26 158 22 176 40
-                 C200 22 234 30 240 54
-                 C266 50 288 70 282 92
-                 C304 98 308 126 288 138
-                 C296 158 276 176 254 170
-                 C250 192 220 202 200 188
-                 C186 206 152 206 140 188
-                 C114 202 82 190 82 168
-                 C64 172 48 164 55 150 Z"
-          stroke="var(--c1, #374151)" stroke-width="3.5" stroke-linejoin="round" fill="rgba(255,255,255,0.7)"/>
-      </svg>
-      <div class="cloud-content">
-        {% set hero_cue = scene.visual_cues[0] if scene.visual_cues else None %}
-        {% if hero_cue and hero_cue.asset_url %}
-          <img src="{{ hero_cue.asset_url | safe }}" alt="Hero Icon" class="cue-asset float" style="width:70px; height:70px; object-fit:contain;" />
-        {% else %}
-          <div class="emoji">🔒</div>
-        {% endif %}
-        <div class="word">{{ plan.title.split(' ')[-1] if plan.title else "Intro" }}</div>
+    <!-- SVG Embedding Interface Slot -->
+    <div class="svg-embed-slot" data-svg-id="intro_hero" data-author="Omar Khaled">
+      <!-- OMAR_KHALED_SVG_START -->
+      <div class="cloud-wrap">
+        <svg viewBox="0 0 340 260" fill="none">
+          <path d="M55 150
+                   C30 148 18 128 30 112
+                   C20 96 34 74 58 76
+                   C60 52 88 36 112 48
+                   C122 26 158 22 176 40
+                   C200 22 234 30 240 54
+                   C266 50 288 70 282 92
+                   C304 98 308 126 288 138
+                   C296 158 276 176 254 170
+                   C250 192 220 202 200 188
+                   C186 206 152 206 140 188
+                   C114 202 82 190 82 168
+                   C64 172 48 164 55 150 Z"
+            stroke="var(--c1, #374151)" stroke-width="3.5" stroke-linejoin="round" fill="rgba(255,255,255,0.7)"/>
+        </svg>
+        <div class="cloud-content">
+          {% set hero_cue = scene.visual_cues[0] if scene.visual_cues else None %}
+          {% if hero_cue and hero_cue.asset_url %}
+            <img src="{{ hero_cue.asset_url | safe }}" alt="Hero Icon" class="cue-asset float" style="width:70px; height:70px; object-fit:contain;" />
+          {% else %}
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="var(--c1, #0ea5e9)" class="float">
+              <path d="M12 17a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2zm6-9h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM9 6a3 3 0 0 1 6 0v2H9V6z"/>
+            </svg>
+          {% endif %}
+          <div class="word">{{ plan.title.split(' ')[-1] if plan.title else "Intro" }}</div>
+        </div>
       </div>
+      <!-- OMAR_KHALED_SVG_END -->
     </div>
   </div>
 

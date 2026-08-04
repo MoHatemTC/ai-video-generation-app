@@ -53,6 +53,31 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 }
 .glass-panel:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(0,0,0,0.1);}
 
+/* ─── SVG Embedding Interface & Component Library ─── */
+.svg-embed-slot{
+  display:inline-flex;align-items:center;justify-content:center;position:relative;
+}
+.svg-embed-slot svg.concept-svg{
+  width:clamp(200px,25vw,320px);height:auto;overflow:visible;
+}
+
+.pillar-grid{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;width:100%;max-width:900px;}
+.dual-panel{display:flex;align-items:center;justify-content:space-between;gap:40px;width:100%;max-width:950px;}
+.dual-panel-visual{flex:1;display:flex;justify-content:center;align-items:center;}
+.dual-panel-content{flex:1;text-align:left;}
+.code-card{background:#0f172a;color:#f8fafc;border-radius:12px;padding:20px;font-family:monospace;box-shadow:0 10px 30px rgba(0,0,0,0.2);}
+.code-card .window-controls{display:flex;gap:6px;margin-bottom:12px;}
+.code-card .dot-ctrl{width:10px;height:10px;border-radius:50%;}
+.code-card .dot-red{background:#ef4444;}
+.code-card .dot-yellow{background:#f59e0b;}
+.code-card .dot-green{background:#22c55e;}
+.code-card .kw{color:#38bdf8;font-weight:bold;}
+.code-card .tp{color:#a78bfa;}
+.code-card .fn{color:#4ade80;}
+.code-card .lock-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,0.2);color:#34d399;border-radius:6px;font-size:12px;}
+.medallion-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:180px;height:180px;border-radius:50%;background:var(--glass-bg);border:2px dashed var(--c1);animation:float 6s ease-in-out infinite;}
+.takeaway-banner{width:100%;max-width:850px;padding:16px 28px;background:var(--glass-bg);border:1px solid var(--c1);border-radius:16px;display:flex;align-items:center;justify-content:space-between;margin-top:24px;}
+
 /* ─── Progress Dots ─── */
 #progress{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:50;}
 #progress .dot{width:9px;height:9px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:all .3s ease;}
@@ -71,13 +96,12 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
 
-/* ─── Narration Text ─── */
+/* ─── Narration / Transcript Text (Hidden from Visual Display) ─── */
 .scene-narration{
-  font-size:clamp(15px,1.8vw,19px);color:var(--muted);line-height:1.7;
-  max-width:620px;font-weight:500;
-  opacity:0;animation:fadeUp .6s ease forwards;animation-delay:.5s;
+  display:none !important;
 }
-.scene-narration.centered{text-align:center;margin:0 auto;}
+.scene-narration.centered{display:none !important;}
+
 
 /* ─── SCENE 0 : INTRO ─── */
 .scene[data-template="intro"]{
@@ -270,6 +294,7 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 
 <div id="page">
   <div id="video-frame">
+    <audio id="intro-bg-music" src="assets/intro_music.mp3" preload="auto"></audio>
 
     <div id="progress">
       <div class="dot current" data-i="0"></div>
@@ -297,30 +322,34 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
       What is Docker?
     </div>
 
-    <div class="cloud-wrap">
-      <svg viewBox="0 0 340 260" fill="none">
-        <path d="M55 150
-                 C30 148 18 128 30 112
-                 C20 96 34 74 58 76
-                 C60 52 88 36 112 48
-                 C122 26 158 22 176 40
-                 C200 22 234 30 240 54
-                 C266 50 288 70 282 92
-                 C304 98 308 126 288 138
-                 C296 158 276 176 254 170
-                 C250 192 220 202 200 188
-                 C186 206 152 206 140 188
-                 C114 202 82 190 82 168
-                 C64 172 48 164 55 150 Z"
-          stroke="var(--c1, #374151)" stroke-width="3.5" stroke-linejoin="round" fill="rgba(255,255,255,0.7)"/>
-      </svg>
-      <div class="cloud-content">
-        
-        
-          <img src="https://api.iconify.design/logos/docker-icon.svg" alt="Hero Icon" class="cue-asset float" style="width:70px; height:70px; object-fit:contain;" />
-        
-        <div class="word">Docker?</div>
+    <!-- SVG Embedding Interface Slot -->
+    <div class="svg-embed-slot" data-svg-id="intro_hero" data-author="Omar Khaled">
+      <!-- OMAR_KHALED_SVG_START -->
+      <div class="cloud-wrap">
+        <svg viewBox="0 0 340 260" fill="none">
+          <path d="M55 150
+                   C30 148 18 128 30 112
+                   C20 96 34 74 58 76
+                   C60 52 88 36 112 48
+                   C122 26 158 22 176 40
+                   C200 22 234 30 240 54
+                   C266 50 288 70 282 92
+                   C304 98 308 126 288 138
+                   C296 158 276 176 254 170
+                   C250 192 220 202 200 188
+                   C186 206 152 206 140 188
+                   C114 202 82 190 82 168
+                   C64 172 48 164 55 150 Z"
+            stroke="var(--c1, #374151)" stroke-width="3.5" stroke-linejoin="round" fill="rgba(255,255,255,0.7)"/>
+        </svg>
+        <div class="cloud-content">
+          
+            <img src="https://api.iconify.design/logos/docker-icon.svg" alt="Hero Icon" class="cue-asset float" style="width:70px; height:70px; object-fit:contain;" />
+          
+          <div class="word">Docker?</div>
+        </div>
       </div>
+      <!-- OMAR_KHALED_SVG_END -->
     </div>
   </div>
 
@@ -339,58 +368,43 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 <div class="scene-title"><span>Before Docker — applications broke in production due to OS dependencies.</span></div>
 
 <div class="hero-layout">
-  <div class="hero-image-wrap">
-    
-    
-    <img src="https://api.iconify.design/lucide/laptop.svg?color=%233b82f6"
-         alt="Developer Machine"
-         class="cue-asset hero-img float"
-         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
-    
+  <div class="svg-embed-slot" data-svg-id="1_hero" data-author="Omar Khaled">
+    <!-- OMAR_KHALED_SVG_START -->
+    <div class="hero-image-wrap">
+      <img src="https://api.iconify.design/lucide/laptop.svg?color=%233b82f6"
+           alt="Developer Machine"
+           class="cue-asset hero-img float"
+           onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
+    </div>
+    <!-- OMAR_KHALED_SVG_END -->
   </div>
   <div class="hero-text-wrap">
-    <p class="scene-narration">Before Docker, developers constantly faced the infamous problem: It works on my machine, but breaks in production due to OS differences.</p>
-    
     <div class="supporting-icons">
-      
       <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
-        
-        <img src="https://api.iconify.design/lucide/git-commit-horizontal.svg?color=%23ef4444" alt="Broken deployment paths" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/route-off.svg?color=%23ef4444" alt="Broken deployment paths" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>Broken deployment paths</span>
       </div>
-      
       <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
-        
         <img src="https://api.iconify.design/lucide/monitor-x.svg?color=%23ef4444" alt="OS Mismatch" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>OS Mismatch</span>
       </div>
-      
       <div class="supporting-icon glass-panel" style="animation-delay:3.15s">
-        
-        <img src="https://api.iconify.design/lucide/git-pull-request-closed.svg?color=%23ef4444" alt="Dependency Conflict" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/package-x.svg?color=%23ef4444" alt="Dependency Conflict" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>Dependency Conflict</span>
       </div>
-      
       <div class="supporting-icon glass-panel" style="animation-delay:4.15s">
-        
-        <img src="https://api.iconify.design/lucide/hard-drive.svg?color=%23f59e0b" alt="Heavy VM Overhead" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/server-off.svg?color=%23ef4444" alt="Heavy VM Overhead" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>Heavy VM Overhead</span>
       </div>
-      
     </div>
-    
   </div>
 </div>
     </div>
@@ -399,82 +413,64 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 <div class="scene-title"><span>Docker packages code, runtime, libraries, and settings into lightweight Containers.</span></div>
 
 <div class="hero-layout">
-  <div class="hero-image-wrap">
-    
-    
-    <img src="https://api.iconify.design/lucide/code-2.svg?color=%233b82f6"
-         alt="Application Source"
-         class="cue-asset hero-img float"
-         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
-    
+  <div class="svg-embed-slot" data-svg-id="2_hero" data-author="Omar Khaled">
+    <!-- OMAR_KHALED_SVG_START -->
+    <div class="hero-image-wrap">
+      <img src="https://api.iconify.design/lucide/code-2.svg?color=%2310b981"
+           alt="Application Source"
+           class="cue-asset hero-img float"
+           onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
+    </div>
+    <!-- OMAR_KHALED_SVG_END -->
   </div>
   <div class="hero-text-wrap">
-    <p class="scene-narration">Docker packages your code, runtime, system tools, and libraries into a lightweight, standalone unit called a Container.</p>
-    
     <div class="supporting-icons">
-      
       <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
-        
-        <img src="https://api.iconify.design/logos/docker-icon.svg" alt="Docker Container Engine" class="cue-asset"
+        <img src="https://api.iconify.design/mdi/engine.svg?color=%232496ed" alt="Docker Container Engine" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>Docker Container Engine</span>
       </div>
-      
       <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
-        
         <img src="https://api.iconify.design/lucide/cloud.svg?color=%233b82f6" alt="Cloud & Production Host" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>Cloud & Production Host</span>
       </div>
-      
     </div>
-    
   </div>
 </div>
     </div>
 
     <div class="scene" id="scene-3" data-layout-hint="flow-diagram" data-template="content_a">
-<div class="scene-title"><span>Dockerfile -> Image -> Container running identically across any environment.</span></div>
+<div class="scene-title"><span>Dockerfile -&gt; Image -&gt; Container running identically across any environment.</span></div>
 
 <div class="hero-layout">
-  <div class="hero-image-wrap">
-    
-    
-    <img src="https://api.iconify.design/lucide/file-code.svg?color=%233b82f6"
-         alt="Dockerfile"
-         class="cue-asset hero-img float"
-         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
-    
+  <div class="svg-embed-slot" data-svg-id="3_hero" data-author="Omar Khaled">
+    <!-- OMAR_KHALED_SVG_START -->
+    <div class="hero-image-wrap">
+      <img src="https://api.iconify.design/lucide/file-code-2.svg?color=%233b82f6"
+           alt="Dockerfile"
+           class="cue-asset hero-img float"
+           onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=120&height=120';" />
+    </div>
+    <!-- OMAR_KHALED_SVG_END -->
   </div>
   <div class="hero-text-wrap">
-    <p class="scene-narration">It works using Dockerfiles to build Container Images, which are then stored in Docker Hub and run reliably anywhere.</p>
-    
     <div class="supporting-icons">
-      
       <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
-        
-        <img src="https://api.iconify.design/lucide/package.svg?color=%233b82f6" alt="Docker Image" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/layers.svg?color=%233b82f6" alt="Docker Image" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>Docker Image</span>
       </div>
-      
       <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
-        
-        <img src="https://api.iconify.design/lucide/box.svg?color=%2322c55e" alt="Running Container" class="cue-asset"
+        <img src="https://api.iconify.design/lucide/box.svg?color=%2310b981" alt="Running Container" class="cue-asset"
              style="width:40px;height:40px;"
              onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-        
         <span>Running Container</span>
       </div>
-      
     </div>
-    
   </div>
 </div>
     </div>
@@ -483,70 +479,63 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 <div class="scene-title"><span>Rapid deployment, microservice isolation, and efficient resource usage.</span></div>
 
 <div class="centered-hero">
-  
-  
-  <div class="centered-hero-img-wrap">
-    <img src="https://api.iconify.design/lucide/zap.svg?color=%23eab308"
-         alt="Fast Deployment Card"
-         class="cue-asset centered-hero-img float-reverse"
-         onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=140&height=140';" />
+  <div class="svg-embed-slot" data-svg-id="4_centered_hero" data-author="Omar Khaled">
+    <!-- OMAR_KHALED_SVG_START -->
+    <div class="centered-hero-img-wrap">
+      <img src="https://api.iconify.design/lucide/zap.svg?color=%23eab308"
+           alt="Fast Deployment Card"
+           class="cue-asset centered-hero-img float-reverse"
+           onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/image.svg?color=%230ea5e9&width=140&height=140';" />
+    </div>
+    <!-- OMAR_KHALED_SVG_END -->
   </div>
-  
-  <p class="scene-narration centered">Key advantages include rapid deployment, isolated microservices, and massive resource savings over traditional Virtual Machines.</p>
-  
   <div class="supporting-icons centered">
-    
     <div class="supporting-icon glass-panel" style="animation-delay:1.15s">
-      
-      <img src="https://api.iconify.design/lucide/shield-check.svg?color=%233b82f6" alt="Microservice Isolation Card" class="cue-asset"
+      <img src="https://api.iconify.design/lucide/boxes.svg?color=%238b5cf6" alt="Microservice Isolation Card" class="cue-asset"
            style="width:40px;height:40px;"
            onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-      
       <span>Isolated Apps</span>
     </div>
-    
     <div class="supporting-icon glass-panel" style="animation-delay:2.15s">
-      
-      <img src="https://api.iconify.design/lucide/feather.svg?color=%2322c55e" alt="Lightweight Footprint Card" class="cue-asset"
+      <img src="https://api.iconify.design/lucide/feather.svg?color=%2306b6d4" alt="Lightweight Footprint Card" class="cue-asset"
            style="width:40px;height:40px;"
            onerror="this.onerror=null;this.src='https://api.iconify.design/lucide/sparkles.svg?color=%230ea5e9&width=40&height=40';" />
-      
       <span>Zero VM Waste</span>
     </div>
-    
   </div>
-  
 </div>
     </div>
 
     <div class="scene" id="scene-5" data-layout-hint="outro-checklist" data-template="outro">
 <h2 class="scene-title" style="margin-bottom:24px;"><span>In short — Docker delivers fast, consistent, and secure deployments everywhere.</span></h2>
 
-<p class="scene-narration centered" style="margin-bottom:28px;">In short, Docker ensures your application runs fast, securely, and consistently wherever you deploy it.</p>
-
-<div class="checklist">
-  
-  <div class="check-item" style="animation-delay:0.15s">
-    <div class="check-circle">
-      <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+<div class="svg-embed-slot" data-svg-id="outro_checklist" data-author="Omar Khaled">
+  <!-- OMAR_KHALED_SVG_START -->
+  <div class="checklist">
+    
+    <div class="check-item" style="animation-delay:0.15s">
+      <div class="check-circle">
+        <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+      </div>
+      <span>Consistent Build & Ship</span>
     </div>
-    <span>Consistent Build & Ship</span>
-  </div>
-  
-  <div class="check-item" style="animation-delay:1.15s">
-    <div class="check-circle">
-      <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+    
+    <div class="check-item" style="animation-delay:1.15s">
+      <div class="check-circle">
+        <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+      </div>
+      <span>Isolated Runtime Environment</span>
     </div>
-    <span>Isolated Runtime Environment</span>
-  </div>
-  
-  <div class="check-item" style="animation-delay:2.15s">
-    <div class="check-circle">
-      <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+    
+    <div class="check-item" style="animation-delay:2.15s">
+      <div class="check-circle">
+        <svg viewBox="0 0 16 16"><path d="M2 8 L6 12 L14 3" stroke="#fff" stroke-width="2.4" fill="none"/></svg>
+      </div>
+      <span>Deploy Anywhere Seamlessly</span>
     </div>
-    <span>Deploy Anywhere Seamlessly</span>
+    
   </div>
-  
+  <!-- OMAR_KHALED_SVG_END -->
 </div>
 
 <div class="final-badge">What is Docker?</div>
@@ -566,15 +555,15 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
 <script>
 
 (function(){
-  const scenesData = [{"id": "scene-0", "narration": "What is Docker? Let's explore how containerization changed software deployment forever.", "subtitle": "What is Docker? Containerization for modern software development.", "holdMs": 7000}, {"id": "scene-1", "narration": "Before Docker, developers constantly faced the infamous problem: It works on my machine, but breaks in production due to OS differences.", "subtitle": "Before Docker — applications broke in production due to OS dependencies.", "holdMs": 10400}, {"id": "scene-2", "narration": "Docker packages your code, runtime, system tools, and libraries into a lightweight, standalone unit called a Container.", "subtitle": "Docker packages code, runtime, libraries, and settings into lightweight Containers.", "holdMs": 10000}, {"id": "scene-3", "narration": "It works using Dockerfiles to build Container Images, which are then stored in Docker Hub and run reliably anywhere.", "subtitle": "Dockerfile -> Image -> Container running identically across any environment.", "holdMs": 11000}, {"id": "scene-4", "narration": "Key advantages include rapid deployment, isolated microservices, and massive resource savings over traditional Virtual Machines.", "subtitle": "Rapid deployment, microservice isolation, and efficient resource usage.", "holdMs": 11000}, {"id": "scene-5", "narration": "In short, Docker ensures your application runs fast, securely, and consistently wherever you deploy it.", "subtitle": "In short — Docker delivers fast, consistent, and secure deployments everywhere.", "holdMs": 9000}];
-
   let currentIdx = 0, isPlaying = false, stepTimer = null;
+  const scenesData = [{"id": "scene-0", "narration": "What is Docker? Let's explore how containerization changed software deployment forever.", "subtitle": "What is Docker? Containerization for modern software development.", "holdMs": 7000}, {"id": "scene-1", "narration": "Before Docker, developers constantly faced the infamous problem: It works on my machine, but breaks in production due to OS differences.", "subtitle": "Before Docker — applications broke in production due to OS dependencies.", "holdMs": 10400}, {"id": "scene-2", "narration": "Docker packages your code, runtime, system tools, and libraries into a lightweight, standalone unit called a Container.", "subtitle": "Docker packages code, runtime, libraries, and settings into lightweight Containers.", "holdMs": 10000}, {"id": "scene-3", "narration": "It works using Dockerfiles to build Container Images, which are then stored in Docker Hub and run reliably anywhere.", "subtitle": "Dockerfile -> Image -> Container running identically across any environment.", "holdMs": 11000}, {"id": "scene-4", "narration": "Key advantages include rapid deployment, isolated microservices, and massive resource savings over traditional Virtual Machines.", "subtitle": "Rapid deployment, microservice isolation, and efficient resource usage.", "holdMs": 11000}, {"id": "scene-5", "narration": "In short, Docker ensures your application runs fast, securely, and consistently wherever you deploy it.", "subtitle": "In short — Docker delivers fast, consistent, and secure deployments everywhere.", "holdMs": 9000}];
   const sceneEls = scenesData.map(s => document.getElementById(s.id));
   const dots = document.querySelectorAll("#progress .dot");
   const subtitleText = document.getElementById("subtitle-text");
   const startOverlay = document.getElementById("start-overlay");
   const startBtn = document.getElementById("start-btn");
   const replayBtn = document.getElementById("replay-btn");
+  const bgAudio = document.getElementById("intro-bg-music");
   const synth = window.speechSynthesis;
   let chosenVoice = null;
 
@@ -611,59 +600,64 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
       d.classList.toggle("current", idx === currentIdx);
     });
   }
+  window.showScene = showScene;
 
   function speakCurrentScene(){
     const s = scenesData[currentIdx];
     const minHold = s.holdMs || 8000;
-    const isIntro = (s.template === 'intro' || s.template === 'template_intro' || currentIdx === 0);
+    const currentSceneEl = sceneEls[currentIdx];
+    const isIntro = (currentSceneEl && currentSceneEl.getAttribute("data-template") === "intro") || currentIdx === 0;
+
+    if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
 
     return new Promise(resolve => {
       let speechDone = false;
       let holdDone = false;
-      const finish = () => {
-        if(speechDone && holdDone) resolve();
-      };
+      const finish = () => { if(speechDone && holdDone) resolve(); };
 
-      // Safety timeout: holdMs + 15s max to prevent infinite hang
       const safetyTimer = setTimeout(() => {
         speechDone = true; holdDone = true;
-        if(synth) try{ synth.cancel(); } catch(e){}
+        if(synth) try { synth.cancel(); } catch(e){}
         resolve();
       }, minHold + 15000);
 
-      // Minimum display time — always wait at least holdMs
       setTimeout(() => {
         holdDone = true;
         finish();
       }, minHold);
 
-      // TTS narration — intro scene is completely silent (no speaking)
-      if(synth && s.narration && !isIntro){
-        try{
-          synth.cancel();
-          const utter = new SpeechSynthesisUtterance(s.narration);
-          if(chosenVoice) utter.voice = chosenVoice;
-          utter.rate = 0.95;
-          utter.onend = () => {
-            clearTimeout(safetyTimer);
-            speechDone = true;
-            finish();
-          };
-          utter.onerror = () => {
-            clearTimeout(safetyTimer);
-            speechDone = true;
-            finish();
-          };
-          synth.speak(utter);
-        } catch(err){
-          clearTimeout(safetyTimer);
-          speechDone = true;
-          finish();
+      // --- SPRINT 4 TASK 4: INTRO MUSIC & TTS SUPPRESSION LOGIC ---
+      if(isIntro) {
+        if(synth) try { synth.cancel(); } catch(e){}
+        if(bgAudio) {
+          bgAudio.currentTime = 0;
+          bgAudio.play().catch(err => console.log("Audio autoplay prevented:", err));
         }
-      } else {
-        // Intro scene or no TTS available — silent hold
-        speechDone = true;
+        speechDone = true; // Speech bypassed during intro
         finish();
+      } else {
+        // Stop music if playing from scene 1
+        if(bgAudio && !bgAudio.paused) {
+          bgAudio.pause();
+          bgAudio.currentTime = 0;
+        }
+
+        // Standard TTS playback for Scene 2+
+        if(synth && s.narration){
+          try {
+            synth.cancel();
+            const utter = new SpeechSynthesisUtterance(s.narration);
+            if(chosenVoice) utter.voice = chosenVoice;
+            utter.rate = 0.95;
+            utter.onend = () => { clearTimeout(safetyTimer); speechDone = true; finish(); };
+            utter.onerror = () => { clearTimeout(safetyTimer); speechDone = true; finish(); };
+            synth.speak(utter);
+          } catch(err){
+            clearTimeout(safetyTimer); speechDone = true; finish();
+          }
+        } else {
+          speechDone = true; finish();
+        }
       }
     });
   }
@@ -685,7 +679,7 @@ html,body{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta 
   }
 
   function startAutoPlay(f){ isPlaying = true; currentIdx = f||0; if(stepTimer) clearTimeout(stepTimer); stepSequence(); }
-  function stopAutoPlay(){ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) try{ synth.cancel(); } catch(e){} }
+  function stopAutoPlay(){ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) try{ synth.cancel(); } catch(e){} if(bgAudio) { bgAudio.pause(); } }
 
   dots.forEach((dot, idx) => { dot.addEventListener("click", () => { stopAutoPlay(); startOverlay.classList.add("hidden"); showScene(idx); }); });
   startBtn.addEventListener("click", () => { startOverlay.classList.add("hidden"); startAutoPlay(0); });
