@@ -157,10 +157,43 @@ class GeminiTTSProvider(BaseTTSProvider):
         return await gtts_provider.generate_speech(text, voice, speaking_rate)
 
 
+def _convert_mp3_to_wav(mp3_bytes: bytes) -> bytes:
+    """Converts MP3 bytes into 16000Hz mono WAV bytes via FFmpeg."""
+    import tempfile
+    import subprocess
+    in_path = None
+    out_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as in_f:
+            in_f.write(mp3_bytes)
+            in_path = in_f.name
+        out_path = in_path.replace(".mp3", ".wav")
+        cmd = ["ffmpeg", "-y", "-i", in_path, "-ar", "16000", "-ac", "1", out_path]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
+        if res.returncode == 0 and os.path.exists(out_path):
+            with open(out_path, "rb") as out_f:
+                return out_f.read()
+    except Exception as err:
+        logger.warning(f"FFmpeg MP3 to WAV conversion warning: {err}")
+    finally:
+        if in_path and os.path.exists(in_path):
+            try:
+                os.remove(in_path)
+            except Exception:
+                pass
+        if out_path and os.path.exists(out_path):
+            try:
+                os.remove(out_path)
+            except Exception:
+                pass
+    return mp3_bytes
+
+
 class GTTSProvider(BaseTTSProvider):
     """
     Real Spoken Audio TTS Provider using Google Text-to-Speech (gTTS).
     Generates REAL spoken audio without requiring any API keys or incurring costs.
+    Converts output to 16kHz mono WAV bytes for downstream alignment compatibility.
     """
 
     async def generate_speech(
@@ -177,7 +210,8 @@ class GTTSProvider(BaseTTSProvider):
             try:
                 mp3_bytes = await asyncio.to_thread(_generate)
                 if mp3_bytes and len(mp3_bytes) > 500:
-                    return mp3_bytes
+                    wav_bytes = await asyncio.to_thread(_convert_mp3_to_wav, mp3_bytes)
+                    return wav_bytes
             except Exception as err:
                 logger.warning(f"gTTS attempt {attempt + 1}/3 failed: {err}")
                 await asyncio.sleep(1)

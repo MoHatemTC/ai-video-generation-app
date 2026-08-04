@@ -4,13 +4,14 @@ import React, { useState, useEffect, useRef } from 'react';
  * ScenePlayer: The Interactive Web Render Player
  * Renders the live interactive HTML video directly inside an iframe or custom canvas controls.
  */
-export default function ScenePlayer({ jobId, scriptData, audioData, timestampData, assetData }) {
+export default function ScenePlayer({ jobId, scriptData, audioData, timestampData, assetData, apiBaseUrl = 'http://localhost:8000' }) {
   const [mode, setMode] = useState('rendered'); // 'rendered' or 'canvas'
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef(null);
 
-  const renderUrl = jobId ? `http://localhost:8000/api/render/${jobId}` : null;
+  const baseUrlClean = (apiBaseUrl || 'http://localhost:8000').replace(/\/$/, '');
+  const renderUrl = jobId ? `${baseUrlClean}/api/render/${jobId}` : null;
 
   useEffect(() => {
     if (audioRef.current) {
@@ -24,8 +25,14 @@ export default function ScenePlayer({ jobId, scriptData, audioData, timestampDat
   };
 
   const getActiveContent = () => {
-    if (!scriptData?.segments) return null;
-    const segmentIndex = Math.floor(currentTime / 5);
+    if (!scriptData?.segments || scriptData.segments.length === 0) return null;
+    const totalSegments = scriptData.segments.length;
+    const totalDuration = audioRef.current?.duration || 30;
+    const segmentDuration = totalDuration > 0 ? totalDuration / totalSegments : 5;
+    const segmentIndex = Math.min(
+      totalSegments - 1,
+      Math.max(0, Math.floor(currentTime / segmentDuration))
+    );
     return scriptData.segments[segmentIndex] || scriptData.segments[0];
   };
 
