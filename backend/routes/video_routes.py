@@ -110,12 +110,7 @@ async def get_rendered_video_html(job_id: str):
     file_path = os.path.join(render_dir, f"{job_id}.html")
 
     if not os.path.exists(file_path):
-        # Fall back to any sample render if specific job file is not found
-        sample_files = [f for f in os.listdir(render_dir) if f.endswith(".html")] if os.path.exists(render_dir) else []
-        if sample_files:
-            file_path = os.path.join(render_dir, sample_files[0])
-        else:
-            raise HTTPException(status_code=404, detail="Rendered video not found for this job.")
+        raise HTTPException(status_code=404, detail="Rendered video not found for this job.")
 
     return FileResponse(path=file_path, media_type="text/html")
 
@@ -144,17 +139,14 @@ async def download_video(job_id: str):
                 s_data = row.get("scene_data") if isinstance(row.get("scene_data"), dict) else {}
                 a_meta = row.get("audio_metadata") if isinstance(row.get("audio_metadata"), dict) else {}
                 a_path = str(a_meta.get("local_path") or a_meta.get("audio_file_path") or "")
-                rendered_path = await render_scene_plan_to_mp4(s_data, audio_path=a_path, output_mp4_path=mp4_path)
-                if rendered_path and os.path.exists(rendered_path):
-                    return FileResponse(path=rendered_path, filename=f"video_{job_id[:8]}.mp4", media_type="video/mp4")
+                if a_path and os.path.exists(a_path):
+                    rendered_path = await render_scene_plan_to_mp4(s_data, audio_path=a_path, output_mp4_path=mp4_path)
+                    if rendered_path and os.path.exists(rendered_path):
+                        return FileResponse(path=rendered_path, filename=f"video_{job_id[:8]}.mp4", media_type="video/mp4")
     except Exception as err:
         logger.warning(f"On-demand MP4 synthesis warning: {err}")
 
     if os.path.exists(html_path):
         return FileResponse(path=html_path, filename=f"video_{job_id[:8]}.html", media_type="text/html")
-    else:
-        sample_files = [f for f in os.listdir(render_dir) if f.endswith(".html")] if os.path.exists(render_dir) else []
-        if sample_files:
-            fallback = os.path.join(render_dir, sample_files[0])
-            return FileResponse(path=fallback, filename=f"video_{job_id[:8]}.html", media_type="text/html")
-        raise HTTPException(status_code=404, detail="No downloadable video found for this job.")
+
+    raise HTTPException(status_code=404, detail="No downloadable video found for this job.")

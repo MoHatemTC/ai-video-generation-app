@@ -8,6 +8,13 @@ def _cap_score(score: float) -> int:
     """Ensure score is between 0 and 100, rounded."""
     return round(min(100.0, max(0.0, score)))
 
+def _norm_seg_id(val: Any) -> str:
+    """Normalize segment IDs to a consistent 'seg_X' string format."""
+    s = str(val).strip()
+    if s.startswith("seg_"):
+        s = s[4:]
+    return f"seg_{s}"
+
 def validate_scene_plan(
     script: Dict[str, Any],
     scene_plan: ScenePlan,
@@ -21,13 +28,17 @@ def validate_scene_plan(
         - List of detected issue strings (for the report)
     """
     # --- 1. Script Coverage ---
-    segment_ids = {str(seg.get("segment_id", seg.get("id"))) for seg in script.get("segments", [])}
+    segment_ids = {
+        _norm_seg_id(seg.get("segment_id", seg.get("id")))
+        for seg in script.get("segments", [])
+        if seg.get("segment_id") is not None or seg.get("id") is not None
+    }
     referenced_ids = set()
     for scene in scene_plan.scenes:
-        referenced_ids.update(scene.script_segment_ids)
-    
+        referenced_ids.update(_norm_seg_id(sid) for sid in scene.script_segment_ids)
+
     missing = segment_ids - referenced_ids
-    coverage_score = (len(referenced_ids) / len(segment_ids)) * 100 if segment_ids else 100
+    coverage_score = (len(referenced_ids.intersection(segment_ids)) / len(segment_ids)) * 100 if segment_ids else 100
     coverage_score = _cap_score(coverage_score)
 
     # --- 2. Scene Structure ---
