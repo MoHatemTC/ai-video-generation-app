@@ -35,6 +35,7 @@ For every narration segment:
 - Otherwise use segment_start.
 
 Rules:
+- **You MUST generate at least 7 scenes.** If the script is short, create transitional scenes (e.g., title, summary, transition) or split longer segments to reach 7 scenes.
 - Every scene must reference one or more script segments.
 - Every visual cue must reference exactly one segment.
 - Every visual cue MUST have a valid element_type: one of "text", "image", "diagram", "icon", "gif", "video", "svg". NEVER use "animation", "background", "interactive", or other values.
@@ -78,6 +79,7 @@ Each instruction specifies:
 Your responsibility is to **update the Scene Plan** by applying **only** these instructions.
 
 **Rules:**
+**Ensure the final scene plan has at least 7 scenes.** If the revision instructions would reduce the count below 7, you must add additional scenes as needed.
 - Modify ONLY the fields referenced by the revision instructions.
 - Preserve every other field exactly as it is.
 - Do NOT regenerate the storyboard.
