@@ -47,7 +47,7 @@ async def test_process_video_job_success(
     # Stage 2: Mock Scene Planner & Director
     mock_planner = MagicMock()
     mock_plan = MagicMock()
-    mock_plan.model_dump.return_value = {"scenes": []}
+    mock_plan.model_dump.return_value = {"scenes": [], "video_id": "test-job-123", "title": "Test Video", "total_duration_seconds": 60.0}
     mock_planner.plan_scenes = AsyncMock(return_value=mock_plan)
     mock_planner_cls.return_value = mock_planner
 
@@ -64,10 +64,9 @@ async def test_process_video_job_success(
     # Stage 5: Mock Omar's Asset Service
     mock_process_scene.return_value = {"assets": []}
 
-    # 3. Setup Asyncio Thread Mocks (For WhisperX and Render Engine)
+    # 3. Setup Asyncio Thread Mocks (For WhisperX Alignment)
     mock_to_thread.side_effect = [
-        {"word_timestamps": []},                         # Stage 4: WhisperX Alignment
-        "data/renders/test-job-123.html"                 # Stage 6: Render Engine
+        {"word_timestamps": []}                         # Stage 4: WhisperX Alignment
     ]
 
     job_id = "test-job-123"
@@ -77,7 +76,7 @@ async def test_process_video_job_success(
     await process_video_job(prompt, job_id=job_id, supabase_client=mock_supabase)
 
     # 5. Verify it marked the job as completed
-    completed_call = {"status": "completed", "video_url": "data/renders/test-job-123.html"}
+    completed_call = {"status": "completed", "video_url": f"/renders/{job_id}.html"}
     update_args = [call.args[0] for call in mock_table.update.call_args_list]
     
     assert completed_call in update_args, "Pipeline did not reach completed state!"

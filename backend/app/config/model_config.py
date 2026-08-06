@@ -35,7 +35,7 @@ def get_planner_config():
     gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if gemini_key and not gemini_key.startswith("your_"):
         return {
-            "model_name": "gemini-2.0-flash",
+            "model_name": "gemini-flash-latest",
             "api_key": gemini_key,
             "base_url": None
         }

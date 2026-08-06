@@ -1,0 +1,66 @@
+RENDERER COMPATIBILITY RULES FOR GENERATED HTML SCENES
+
+1. ANIMATION: CSS @keyframes / CSS transitions ONLY.
+   - No SMIL (<animate>, <animateTransform> inside SVG).
+   - No JS-driven motion: no requestAnimationFrame loops manually setting
+     styles, no animation libraries that bypass the Web Animations API
+     (e.g. GSAP/anime.js by default do NOT register as real Animation
+     objects and will be invisible to the capture pipeline).
+   - Why: the renderer finds every animation via document.getAnimations()
+     and manually drives its timing frame-by-frame. Anything outside that
+     API reintroduces the exact "vibrating" bug this project started with.
+
+2. JS IS FINE for state/logic, just not for visual motion:
+   - Scene show/hide (toggling an "active" class), a click-to-start
+     handler, narration pacing via setTimeout/Promise chains - all fine,
+     and already relied on by the harness.
+   - The one exception already handled by the renderer: don't assume
+     page.click()-style interaction works pre-render; the actual click is
+     fired via element.click() in-page, not a simulated mouse event.
+
+3. NO EMOJI in <text> elements (SVG or HTML). Headless Chromium may have
+   no emoji font loaded and renders them as blank glyphs. Use hand-drawn
+   SVG shapes for icons/mascots instead.
+
+4. AVOID full-viewport backdrop-filter (or any large one). It's a known
+   headless-Chromium deadlock trigger, especially on an element that goes
+   display:none -> visible. The renderer strips backdrop-filter globally
+   before capture regardless, so anything relying on it visually will
+   just look flat, not blurred.
+
+5. SVG TRANSFORM CONFLICT: never put a CSS-animated `transform` on an
+   element that ALSO carries a static XML `transform="translate(...)"`
+   attribute - the CSS property completely overrides the attribute and
+   you lose the static positioning. Wrap in two nested <g> instead: outer
+   <g transform="..."> for static position, inner <g class="..."> for the
+   CSS-animated part.
+
+6. CONTINUOUS vs ONE-SHOT animation elements need different treatment:
+   - Ambient/looping motion (floating icons, idle pulses) that should run
+     uninterrupted across the whole video: tag with a class the reset
+     logic explicitly excludes from restarting (this template uses
+     "float" / "float-reverse" / "pulse-soft").
+   - One-shot entrance animations (fade/pop/slide-in) that should replay
+     cleanly every time a scene becomes active: everything else - the
+     reset logic force-restarts these automatically per scene.
+
+7. SCENE TRANSITIONS should be effectively instant. A multi-hundred-ms
+   crossfade between two differently-laid-out scenes reads as a glitchy
+   overlap once frozen into discrete frames, not a smooth blend a viewer
+   perceives in real playback. Either design for a hard cut, or expect
+   the renderer to force one.
+
+8. AVOID remote/non-deterministic image sources (especially AI image
+   generators that return a different image per request). Prefer
+   hand-drawn inline SVG - it's instant, deterministic, and identical
+   across every parallel render worker by construction. If a remote
+   asset must be used, it should at least be a stable, static file.
+
+9. DATA CONTRACT the Python renderer depends on:
+   - A JS array (scenesData) with one object per scene: {id, narration,
+     subtitle, holdMs} - id must match the scene element's DOM id.
+   - Progress-dot count (if used) must equal scenesData.length.
+   - A start button matching AUTO_CLICK_SELECTOR in the Python config.
+   - holdMs should roughly match how long the narration takes to speak
+     (~2.5-3 words/sec at a natural pace) plus a small buffer - too short
+     and narration gets cut off, too long and the scene just sits idle.

@@ -175,7 +175,7 @@ def populate_scene_template(
             os.environ["OPENAI_API_KEY"] = api_key
             os.environ["OPENAI_API_BASE"] = litellm_base
             from backend.app.config.model_config import format_model_for_litellm_proxy
-            raw_model = os.getenv("MODEL_NAME", "gemini/gemini-2.0-flash")
+            raw_model = os.getenv("MODEL_NAME", "gemini/gemini-3.5-flash-lite")
             model_name = format_model_for_litellm_proxy(raw_model)
 
             max_retries = 3
@@ -213,7 +213,7 @@ def populate_scene_template(
                         import concurrent.futures
                         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                             fut = pool.submit(lambda: asyncio.run(crew.kickoff_async()))
-                            result = fut.result(timeout=90)
+                            result = fut.result(timeout=10)
                     except Exception as k_err:
                         logger.warning(f"CrewAI kickoff_async error: {k_err}. Using direct Jinja2 rendering.")
                         return _render_template_jinja2(template_html, scene, plan_context)
