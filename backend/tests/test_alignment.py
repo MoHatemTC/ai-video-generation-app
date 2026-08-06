@@ -68,7 +68,7 @@ MOCK_WHISPERX_RESULT = {
 @pytest.fixture
 def mock_whisperx():
     """Mocks the whisperx module to avoid loading actual ML models during tests."""
-    with patch("app.services.alignment.whisperx") as mock:
+    with patch("backend.app.services.alignment.whisperx") as mock:
         # Mock model loading
         mock.load_align_model.return_value = (MagicMock(), MagicMock())
         # Mock audio loading (return a dummy numpy array of length 32000 -> 2 seconds at 16khz)
@@ -236,7 +236,7 @@ def test_empty_script_returns_empty_timestamp_map():
     # Updated to VideoScriptBlueprint
     empty_script = VideoScriptBlueprint(title="", target_audience="", estimated_total_duration=0, segments=[])
 
-    with patch("app.services.alignment.whisperx") as mock_whisperx:
+    with patch("backend.app.services.alignment.whisperx") as mock_whisperx:
         result = service.align(empty_script, MOCK_AUDIO_TRACK, video_id=MOCK_VIDEO_ID)
 
         mock_whisperx.load_align_model.assert_not_called()

@@ -140,6 +140,8 @@ class AlignmentService:
                     raise RuntimeError(f"Alignment process failed after {retries} retries. Last error: {e}")
                 time.sleep(2) # Short backoff before retry
 
+        raise RuntimeError("Alignment process completed without returning a TimestampMap.")
+
     def _prepare_segments_for_alignment(
         self, script: VideoScriptBlueprint, audio: np.ndarray, known_duration: Optional[float] = None
     ) -> Tuple[List[Dict[str, Any]], RoughBounds]:

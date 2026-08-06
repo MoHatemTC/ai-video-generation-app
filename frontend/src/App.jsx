@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Terminal, ChevronDown, ChevronUp, Sparkles, Download, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Terminal, ChevronDown, ChevronUp, Sparkles, Download, ArrowRight, ShieldCheck, ExternalLink, Play } from 'lucide-react';
 import ScenePlayer from './components/ScenePlayer';
 
 const PIPELINE_STAGES = [
@@ -265,15 +265,16 @@ export default function App() {
               })}
             </div>
 
-            {videoUrl && (
-              <div className="mt-10 p-6 bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-200 text-center">
+            {(videoUrl || currentStatus === 'completed') && (
+              <div className="mt-10 p-6 bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-200 text-center shadow-lg">
                 <h3 className="text-2xl font-extrabold text-gray-900 mb-2 flex items-center justify-center gap-2">
-                  <ShieldCheck className="w-6 h-6 text-blue-600" /> Video Render Complete!
+                  <ShieldCheck className="w-7 h-7 text-green-600" /> Video Generation Complete!
                 </h3>
-                <p className="text-gray-600 text-sm mb-6">Your AI-generated course has been successfully stitched and rendered.</p>
+                <p className="text-gray-600 text-sm mb-6">Your AI-generated course has been successfully planned, voiced, aligned, and rendered.</p>
                 
-                <div className="aspect-video max-w-2xl mx-auto rounded-xl overflow-hidden shadow-2xl bg-black mb-6">
+                <div className="aspect-video max-w-2xl mx-auto rounded-xl overflow-hidden shadow-2xl bg-black mb-6 border border-slate-700">
                   <ScenePlayer 
+                    jobId={jobId}
                     scriptData={stageData.script_data} 
                     audioData={stageData.audio_metadata} 
                     timestampData={stageData.timestamp_data}
@@ -281,13 +282,24 @@ export default function App() {
                   />
                 </div>
 
-                <a
-                  href={videoUrl}
-                  download
-                  className="inline-flex items-center gap-2 bg-[#004EFF] hover:bg-blue-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg transition-all text-base"
-                >
-                  <Download className="w-5 h-5" /> Download Final Video (.mp4)
-                </a>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <a
+                    href={`${API_BASE_URL}/api/render/${jobId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#004EFF] hover:bg-blue-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg transition-all text-base hover:scale-[1.02]"
+                  >
+                    <ExternalLink className="w-5 h-5" /> Open Standalone Video (New Tab)
+                  </a>
+
+                  <a
+                    href={`${API_BASE_URL}/api/video/${jobId}/download`}
+                    download
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg transition-all text-base hover:scale-[1.02]"
+                  >
+                    <Download className="w-5 h-5" /> Download Video (.MP4 / .HTML)
+                  </a>
+                </div>
               </div>
             )}
           </div>

@@ -16,6 +16,7 @@ supabase
 whisperx
 numpy
 
-# Testing
+# Testing / Rendering
 pytest
 pytest-asyncio
+playwright

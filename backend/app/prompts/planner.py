@@ -43,7 +43,7 @@ Rules:
 - Use only assets provided in the assets input.
 - If no asset exists, create a text cue instead.
 - Avoid clutter.
-- Prefer one primary visual and at most two secondary visuals.
+- Every scene MUST contain AT LEAST 2 visual cues (1 primary visual and at least 1 secondary visual/icon). Never produce a scene with only 1 visual cue.
 - Visuals must reinforce the narration rather than duplicate it.
 - Keep layouts consistent across consecutive scenes whenever possible.
 - Return only the JSON object matching the schema.
