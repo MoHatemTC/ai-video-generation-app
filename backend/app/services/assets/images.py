@@ -194,9 +194,17 @@ class AssetService:
 
                 # Clean up the result to get only the SVG code
                 svg_code = str(result).strip()
-                # A simple check to ensure we got something that looks like SVG
+
+                # Strip markdown code fences if the LLM wrapped the output
+                # e.g. ```svg\n<svg...>\n``` or ```\n<svg...>\n```
+                if svg_code.startswith("```"):
+                    svg_code = re.sub(r"^```(?:svg)?\s*", "", svg_code)
+                    svg_code = re.sub(r"\s*```$", "", svg_code)
+                    svg_code = svg_code.strip()
+
+                # Validate that the output looks like a proper SVG block
                 if not svg_code.startswith("<svg") or not svg_code.endswith("</svg>"):
-                     raise ValueError("The LLM did not return a valid SVG code block.")
+                    raise ValueError("The LLM did not return a valid SVG code block.")
                 
                 optimized_prompt = final_prompt # The full prompt we used
 

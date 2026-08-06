@@ -8,7 +8,7 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from backend.app.services.assets.images import AssetService
-from backend.app.services.assets.shared.asset_item import AssetItem
+from backend.app.schemas.asset import AssetItem
 
 class TestSVGGeneration(unittest.TestCase):
 
