@@ -77,6 +77,10 @@ class AssetService:
         except Exception:
             db = []
 
+        # Ensure the prompt field contains valid SVG, otherwise use a placeholder.
+        if not asset.prompt.strip().startswith("<svg"):
+            asset.prompt = f"<svg width='1280' height='720' viewBox='0 0 1280 720'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'>Error: Invalid SVG content for cue: {asset.element}</text></svg>"
+
         asset_entry = {
             "video_id": video_id,
             "asset_id": asset.asset_id,
@@ -150,139 +154,70 @@ class AssetService:
     async def resolve_visual_cue(
         self, cue: str, scene_id: str, cue_id: str, asset_id: str, video_id: str, supabase_client: Any = None
     ) -> AssetItem:
-        # Pull the model string from the .env file, default to openrouter/free
-        model_string = os.getenv("OPENROUTER_MODEL", "openrouter/free")
         llm_client = self._get_llm_client()
 
-
-        # If we could not get a valid LLM client, do not attempt to run the crew.
-        # Go straight to the fallback prompt. This prevents downstream errors.
+        # If we could not get a valid LLM client, use a placeholder SVG.
         if not llm_client:
-            optimized_prompt = self._build_fallback_prompt(cue)
+            svg_code = f"<svg width='1280' height='720' viewBox='0 0 1280 720'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'>LLM not available. Cue: {cue}</text></svg>"
+            optimized_prompt = "LLM not available"
         else:
             try:
-                # Build an agent/crew using the successfully connected LLM client.
-                design_director = Agent(
-                    role="Educational Visual Design Director",
-                    goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
-                    backstory="You are an expert visual layout designer at Sprints Video Studio.",
+                # Load the new SVG prompt template
+                template_path = os.path.join(os.path.dirname(__file__), "svg_prompt_template.md")
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    prompt_template = f.read()
+
+                # Format the template with the current cue
+                final_prompt = prompt_template.format(cue=cue)
+
+                # Create the SVG writer agent
+                svg_writer_agent = Agent(
+                    role="Expert SVG Illustrator",
+                    goal="Generate clean, animation-friendly SVG code from a visual cue, strictly following compatibility rules.",
+                    backstory="You are a senior designer at an educational video studio, specializing in creating vector assets for animation.",
                     verbose=False,
                     allow_delegation=False,
                     llm=llm_client
                 )
 
-                prompt_template = self._build_prompt_template(cue)
-
-                refinement_task = Task(
-                    description=prompt_template,
-                    expected_output="A single, optimized prompt string ready for an image generation model.",
-                    agent=design_director
+                # Create the generation task
+                generation_task = Task(
+                    description=final_prompt,
+                    expected_output="A single, complete, and valid SVG code block.",
+                    agent=svg_writer_agent
                 )
 
-                my_crew = Crew(agents=[design_director], tasks=[refinement_task])
-
+                # Create and run the crew
+                svg_crew = Crew(agents=[svg_writer_agent], tasks=[generation_task])
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, my_crew.kickoff)
-                refined_prompt = str(result).strip() if result else ""
+                result = await loop.run_in_executor(None, svg_crew.kickoff)
 
-                # Perform automated quality evaluation. If it fails, fall back to a safer prompt.
-                if refined_prompt and self._evaluate_prompt_quality(refined_prompt):
-                    optimized_prompt = refined_prompt
-                else:
-                    if refined_prompt:
-                        logger.warning(
-                            f"Refined prompt '{refined_prompt}' failed quality check. Reverting to basic prompt for cue: '{cue}'"
-                        )
-                    optimized_prompt = self._build_fallback_prompt(cue)
+                # Clean up the result to get only the SVG code
+                svg_code = str(result).strip()
+                # A simple check to ensure we got something that looks like SVG
+                if not svg_code.startswith("<svg") or not svg_code.endswith("</svg>"):
+                     raise ValueError("The LLM did not return a valid SVG code block.")
+                
+                optimized_prompt = final_prompt # The full prompt we used
 
             except Exception as e:
-                logger.warning(f"Asset refinement task failed ({e}). Reverting to basic prompt.")
-                optimized_prompt = self._build_fallback_prompt(cue)
-
-        # Construct Pollinations image URL from the final optimized prompt
-        try:
-            design_director = Agent(
-                role="Educational Visual Design Director",
-                goal="Refine simple and loose textual visual cues into highly detailed, clean image prompts.",
-                backstory="You are an expert visual layout designer at Sprints Video Studio.",
-                verbose=False,
-                allow_delegation=False,
-                llm=model_string
-            )
-
-            refinement_task = Task(
-                description=f"Refine this cue into an image generator prompt: '{cue}'",
-                expected_output="A single optimized prompt string.",
-                agent=design_director
-            )
-
-            my_crew = Crew(agents=[design_director], tasks=[refinement_task])
-            
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, my_crew.kickoff)
-            optimized_prompt = result if isinstance(result, str) else str(result).strip()
-            
-        except Exception as e:
-            logger.warning(f"Asset refinement task failed ({e}). Reverting to raw element fallback.")
-            optimized_prompt = f"Illustration showing: {cue}"
-
-        # Construct Pollinations image URL from the final optimized prompt
-        try:
-            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(optimized_prompt)}?width=1280&height=720&model=flux&nologo=true"
-        except Exception:
-            image_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(str(optimized_prompt))}?width=1280&height=720&model=flux&nologo=true"
-
-        if supabase_client is not None:
-            try:
-                req = urllib.request.Request(
-                    image_url,
-                    headers={'User-Agent': 'Mozilla/5.0'}
-                )
-                loop = asyncio.get_running_loop()
-
-                def fetch_bytes():
-                    with urllib.request.urlopen(req, timeout=15) as response:
-                        return response.read()
-
-                logger.info(f"Downloading generated image from Pollinations for asset {asset_id}...")
-                file_bytes = await loop.run_in_executor(None, fetch_bytes)
-
-                # Store with path format: {video_id}/{asset_id}.png
-                storage_key = f"{video_id}/{asset_id}.png"
-                logger.info(f"Uploading image to Supabase assets bucket as {storage_key}...")
-
-                supabase_client.storage.from_("assets").upload(
-                    storage_key,
-                    file_bytes,
-                    {"content-type": "image/png", "upsert": "true"},
-                )
-
-                public_url_response = supabase_client.storage.from_("assets").get_public_url(storage_key)
-                if isinstance(public_url_response, dict):
-                    image_url = public_url_response.get("publicUrl") or public_url_response.get("public_url")
-                else:
-                    image_url = public_url_response
-                logger.info(f"Image uploaded successfully! Public URL: {image_url}")
-            except Exception as upload_err:
-                logger.error(f"Failed to upload image {asset_id} to Supabase. Falling back to direct URL. Error: {upload_err}", exc_info=True)
-
-        final_url = str(image_url or "")
+                logger.error(f"SVG generation task failed for cue '{cue}': {e}", exc_info=True)
+                svg_code = f"<svg width='1280' height='720' viewBox='0 0 1280 720'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'>SVG generation failed. Cue: {cue}</text></svg>"
+                optimized_prompt = f"Failed to generate SVG for cue: {cue}"
 
         asset = AssetItem(
             asset_id=asset_id,
             scene_reference=scene_id,
-            scene_id=scene_id,
             cue_reference=cue_id,
-            cue_id=cue_id,
-            asset_type="image",
-            url=final_url,
-            prompt=optimized_prompt,
-            description=optimized_prompt,
-            source="generated",
-            asset_license="open-source",
+            asset_type="svg",
+            url=f"urn:asset:{asset_id}",
+            prompt=svg_code,
+            description=cue,
+            source="generated-svg",
+            asset_license="N/A",
             element=cue,
             prompt_used=optimized_prompt,
-            resolution="1920x1080",
+            resolution="vector",
             aspect_ratio="16:9"
         )
 

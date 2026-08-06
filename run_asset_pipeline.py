@@ -39,15 +39,19 @@ async def main():
     generated_assets = []
     for item in visual_cues:
         print(f"Processing cue: '{item['cue']}'...")
-        asset = await service.resolve_visual_cue(
-            cue=item["cue"],
-            scene_id=item["scene_id"],
-            cue_id=item["cue_id"],
-            asset_id=item["asset_id"],
-            video_id=video_id
-        )
-        generated_assets.append(asset)
-        print(f"✅ Generated Prompt: {asset.prompt}\n")
+        try:
+            asset = await service.resolve_visual_cue(
+                cue=item["cue"],
+                scene_id=item["scene_id"],
+                cue_id=item["cue_id"],
+                asset_id=item["asset_id"],
+                video_id=video_id
+            )
+            generated_assets.append(asset)
+            print(f"✅ Generated Prompt: {asset.prompt}\n")
+        except Exception as e:
+            print(f"⚠️  Error processing cue '{item['cue']}': {e}. Skipping.")
+            continue
 
     print(
         f"🎉 Pipeline run complete! Generated {len(generated_assets)} assets and saved them to "
