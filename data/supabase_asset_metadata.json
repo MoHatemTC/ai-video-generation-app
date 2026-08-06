@@ -3976,5 +3976,83 @@
         "source": "generated",
         "license": "open-source",
         "registered_at": "2026-08-04T14:32:36.703273+00:00"
+    },
+    {
+        "video_id": "0e2e95c4-446a-4f0e-9016-e058675b2ef2",
+        "asset_id": "image_1",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1_1",
+        "element": "Text header introducing AI limitations and capabilities wishlist",
+        "prompt": "Illustration showing: Text header introducing AI limitations and capabilities wishlist",
+        "url": "https://fqkyditcvwsgecsanqps.supabase.co/storage/v1/object/public/assets/0e2e95c4-446a-4f0e-9016-e058675b2ef2/image_1.png",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-08-06T16:40:31.915134+00:00"
+    },
+    {
+        "video_id": "0e2e95c4-446a-4f0e-9016-e058675b2ef2",
+        "asset_id": "image_3",
+        "scene_id": "scene_1",
+        "cue_id": "cue_2_1",
+        "element": "Primary visual concept showing isolated AI intelligence limited to training data",
+        "prompt": "Illustration showing: Primary visual concept showing isolated AI intelligence limited to training data",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20Primary%20visual%20concept%20showing%20isolated%20AI%20intelligence%20limited%20to%20training%20data",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-08-06T16:40:46.913354+00:00"
+    },
+    {
+        "video_id": "0e2e95c4-446a-4f0e-9016-e058675b2ef2",
+        "asset_id": "image_4",
+        "scene_id": "scene_1",
+        "cue_id": "cue_2_2",
+        "element": "Secondary text label illustrating static training data boundary",
+        "prompt": "Illustration showing: Secondary text label illustrating static training data boundary",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20Secondary%20text%20label%20illustrating%20static%20training%20data%20boundary",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-08-06T16:41:01.175450+00:00"
+    },
+    {
+        "video_id": "0e2e95c4-446a-4f0e-9016-e058675b2ef2",
+        "asset_id": "image_2",
+        "scene_id": "scene_1",
+        "cue_id": "cue_1_2",
+        "element": "Secondary label detailing isolated tasks wished from AI",
+        "prompt": "Illustration showing: Secondary label detailing isolated tasks wished from AI",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20Secondary%20label%20detailing%20isolated%20tasks%20wished%20from%20AI",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-08-06T16:41:07.852525+00:00"
+    },
+    {
+        "video_id": "0e2e95c4-446a-4f0e-9016-e058675b2ef2",
+        "asset_id": "image_5",
+        "scene_id": "scene_2",
+        "cue_id": "cue_3_1",
+        "element": "Primary overview card introducing LangChain as external connection tool",
+        "prompt": "Illustration showing: Primary overview card introducing LangChain as external connection tool",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20Primary%20overview%20card%20introducing%20LangChain%20as%20external%20connection%20tool",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-08-06T16:41:14.759406+00:00"
+    },
+    {
+        "video_id": "0e2e95c4-446a-4f0e-9016-e058675b2ef2",
+        "asset_id": "image_6",
+        "scene_id": "scene_2",
+        "cue_id": "cue_3_2",
+        "element": "Secondary label clarifying LangChain's role as developer tool",
+        "prompt": "Illustration showing: Secondary label clarifying LangChain's role as developer tool",
+        "url": "https://image.pollinations.ai/prompt/Illustration%20showing%3A%20Secondary%20label%20clarifying%20LangChain%27s%20role%20as%20developer%20tool",
+        "type": "image",
+        "source": "generated",
+        "license": "open-source",
+        "registered_at": "2026-08-06T16:41:23.916070+00:00"
     }
 ]

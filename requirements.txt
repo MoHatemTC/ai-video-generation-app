@@ -8,6 +8,7 @@ pydantic
 openai
 crewai
 litellm==1.91.4
+google-genai>=2.3.0
 
 # Database / backend-as-a-service
 supabase
@@ -19,4 +20,4 @@ numpy
 # Testing / Rendering
 pytest
 pytest-asyncio
-playwright
+playwright
