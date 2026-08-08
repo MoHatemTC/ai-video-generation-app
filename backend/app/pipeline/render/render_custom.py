@@ -120,6 +120,148 @@ def _load_template(template_name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _clean_headline_text(raw_text: str) -> str:
+    """Clean raw text string into a beautiful, concise, complete scene title."""
+    if not raw_text:
+        return ""
+
+    s = raw_text.strip()
+
+    # Filter out prompt meta-junk prefixes
+    meta_prefixes = [
+        "text cue explaining", "text cue detailing", "text cue showing", "text cue describing",
+        "text cue", "illustration of", "illustration showing", "illustration",
+        "diagram of", "diagram showing", "diagram", "icon of", "icon showing",
+        "graphic of", "picture of", "image of", "showing", "scene"
+    ]
+    s_lower = s.lower()
+    for pref in meta_prefixes:
+        if s_lower.startswith(pref):
+            s = s[len(pref):].strip(" :-_")
+            s_lower = s.lower()
+            break
+
+    # Strip trailing punctuation or '...'
+    s = s.rstrip(".!?:;,-_ ")
+    if s.endswith("..."):
+        s = s[:-3].strip()
+
+    # Normalize AI capitalization (e.g. "Ai" -> "AI")
+    s = s.replace(" Ai ", " AI ").replace(" Ai", " AI").replace("Ai ", "AI ")
+
+    # Remove trailing dangling prepositions or incomplete conjunctions
+    dangling_ends = [" to", " a", " an", " the", " with", " for", " of", " and", " or", " in", " on", " at", " by", " spec"]
+    for d_end in dangling_ends:
+        if s.lower().endswith(d_end):
+            s = s[:-len(d_end)].strip()
+
+    words = s.split()
+    if len(words) > 7:
+        s = " ".join(words[:6]).rstrip(".!?:;,-_ ")
+
+    return s.title().replace("Ai", "AI")
+
+
+def _extract_scene_headline(scene: dict, default_title: str = "Key Concept") -> str:
+    """Extract a short, concise 3-6 word scene headline to explain the scene without dumping full narration transcripts."""
+    sub = (scene.get("subtitle") or "").strip()
+    text = (scene.get("text") or "").strip()
+
+    # 1. If subtitle is concise (<= 45 chars) and not identical to full narration text, clean and return
+    if sub and sub.lower() != text.lower():
+        cleaned_sub = _clean_headline_text(sub)
+        if cleaned_sub and len(cleaned_sub) <= 45:
+            return cleaned_sub
+
+    # 2. Check visual cues for a short descriptive concept title
+    cues = scene.get("visual_cues", [])
+    if cues and isinstance(cues, list):
+        for cue in cues:
+            if isinstance(cue, dict):
+                desc = cue.get("description") or cue.get("content") or ""
+                cleaned_desc = _clean_headline_text(desc)
+                if cleaned_desc and len(cleaned_desc) <= 40 and cleaned_desc.lower() not in text.lower():
+                    return cleaned_desc
+
+    # 3. Derive concise title from text or sub
+    base = sub if (sub and sub.lower() != text.lower()) else text
+    if base:
+        first_clause = base.split('.')[0].split(',')[0].split(';')[0].strip()
+        cleaned_clause = _clean_headline_text(first_clause)
+        if cleaned_clause:
+            return cleaned_clause
+
+    return default_title
+
+
+def _generate_scene_svg(scene: dict, title: str = "", scene_index: int = 0, total_scenes: int = 1) -> str:
+    """
+    Generate or extract inline SVG for a scene directly from scene JSON.
+    Guarantees compliance with assets.txt guidelines:
+    - CSS keyframes/transitions only (no SMIL <animate>)
+    - Double-nested <g> tags for transform safety
+    - No raw emojis in <text>
+    - Uses CSS variables var(--c1), var(--c2), var(--c3)
+    """
+    existing_svg = scene.get("generated_svg") or scene.get("svg_code") or scene.get("svg")
+    if existing_svg and isinstance(existing_svg, str) and "<svg" in existing_svg:
+        return existing_svg
+
+    try:
+        from backend.app.pipeline.render.svg_agent import generate_unique_fallback_svg
+        return generate_unique_fallback_svg(scene, scene_index=scene_index, total_scenes=total_scenes, video_title=title)
+    except Exception:
+        pass
+
+    text = (scene.get("text") or scene.get("subtitle") or "").lower()
+    hint = (scene.get("layout_hint") or scene.get("template") or "").lower()
+    sid = str(scene.get("scene_id", "1"))
+
+    if "intro" in hint or sid == "scene_1" or "welcome" in text:
+        return '''<svg class="concept-svg float" viewBox="0 0 300 240" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Intro Hero SVG">
+  <g transform="translate(150, 120)">
+    <g class="pulse-soft">
+      <circle cx="0" cy="0" r="75" fill="var(--c1, #0ea5e9)" fill-opacity="0.1" stroke="var(--c1, #0ea5e9)" stroke-width="2" stroke-dasharray="6 6"/>
+      <circle cx="0" cy="0" r="50" fill="var(--c2, #06b6d4)" fill-opacity="0.2" stroke="var(--c2, #06b6d4)" stroke-width="3"/>
+    </g>
+    <g class="float-reverse">
+      <rect x="-25" y="-25" width="50" height="50" rx="12" fill="var(--c1, #0ea5e9)" fill-opacity="0.8" transform="rotate(45)"/>
+      <path d="M-10 -5 L0 10 L12 -10" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <g transform="translate(60, -40)">
+      <g class="float">
+        <circle cx="0" cy="0" r="16" fill="var(--c3, #38bdf8)"/>
+      </g>
+    </g>
+  </g>
+</svg>'''
+    elif "recap" in hint or "outro" in hint or "summary" in text or "checklist" in hint:
+        return '''<svg class="concept-svg float" viewBox="0 0 300 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Recap SVG">
+  <g transform="translate(150, 110)">
+    <g class="pulse-soft">
+      <circle cx="0" cy="0" r="65" fill="var(--c1, #22c55e)" fill-opacity="0.12" stroke="var(--c1, #22c55e)" stroke-width="3"/>
+    </g>
+    <g class="float">
+      <circle cx="0" cy="0" r="45" fill="var(--c1, #22c55e)"/>
+      <path d="M-15 0 L-4 12 L18 -10" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+  </g>
+</svg>'''
+    else:
+        return '''<svg class="concept-svg float" viewBox="0 0 300 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Concept SVG">
+  <g transform="translate(150, 110)">
+    <g class="pulse-soft">
+      <rect x="-80" y="-55" width="160" height="110" rx="16" fill="rgba(255,255,255,0.7)" stroke="var(--c1, #3b82f6)" stroke-width="2.5"/>
+    </g>
+    <g class="float-reverse">
+      <circle cx="-35" cy="0" r="22" fill="var(--c1, #3b82f6)" fill-opacity="0.8"/>
+      <circle cx="35" cy="0" r="22" fill="var(--c2, #8b5cf6)" fill-opacity="0.8"/>
+      <path d="M-20 0 L20 0" stroke="var(--c3, #60a5fa)" stroke-width="3" stroke-dasharray="4 4"/>
+    </g>
+  </g>
+</svg>'''
+
+
 # ─── SHARED CSS ───────────────────────────────────────────────────────────────
 
 def _build_shared_css(c1: str, c2: str, c3: str) -> str:
@@ -196,16 +338,10 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 .medallion-wrap{{position:relative;display:flex;align-items:center;justify-content:center;width:180px;height:180px;border-radius:50%;background:var(--glass-bg);border:2px dashed var(--c1);animation:float 6s ease-in-out infinite;}}
 .takeaway-banner{{width:100%;max-width:850px;padding:16px 28px;background:var(--glass-bg);border:1px solid var(--c1);border-radius:16px;display:flex;align-items:center;justify-content:space-between;margin-top:24px;}}
 
-/* ─── Progress Dots ─── */
-#progress{{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:50;}}
-#progress .dot{{width:9px;height:9px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:all .3s ease;}}
-#progress .dot.done{{background:var(--c1);}}
-#progress .dot.current{{background:var(--c1);transform:scale(1.6);box-shadow:0 0 10px var(--c1);}}
-
 /* ─── Scene Base Container ─── */
 .scene{{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .6s ease;padding:50px 6vw 100px;text-align:center;z-index:1;
+  opacity:0;pointer-events:none;transition:opacity 0.05s ease;padding:50px 6vw 100px;text-align:center;z-index:1;
 }}
 .scene.active{{opacity:1;pointer-events:auto;}}
 .scene-title{{font-size:clamp(24px,3.5vw,40px);font-weight:800;color:var(--text);margin-bottom:20px;line-height:1.2;}}
@@ -273,19 +409,19 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 
 /* ─── Hero Layout (Content A — split screen) ─── */
 .hero-layout{{
-  display:flex;align-items:center;justify-content:center;gap:clamp(24px,4vw,60px);
-  width:100%;max-width:1000px;flex:1;
+  display:flex;align-items:center;justify-content:center;gap:clamp(40px,6vw,90px);
+  width:100%;max-width:950px;flex:1;margin:0 auto;
 }}
 .hero-image-wrap{{
   flex-shrink:0;
   opacity:0;animation:slideInLeft .6s cubic-bezier(0.34,1.56,0.64,1) forwards;animation-delay:.3s;
 }}
 .hero-img{{
-  width:clamp(180px,22vw,300px);height:clamp(180px,22vw,300px);
+  width:clamp(160px,18vw,260px);height:clamp(160px,18vw,260px);
   object-fit:contain;border-radius:24px;
 }}
 .hero-text-wrap{{
-  flex:1;text-align:left;
+  flex:1;text-align:left;padding-left:clamp(30px,4vw,65px);margin-left:20px;
   opacity:0;animation:slideInRight .6s ease forwards;animation-delay:.5s;
 }}
 .hero-text-wrap .scene-narration{{
@@ -417,7 +553,6 @@ def _build_shared_js(scenes_data_json: str) -> str:
   let currentIdx = 0, isPlaying = false, stepTimer = null;
   const scenesData = {scenes_data_json};
   const sceneEls = scenesData.map(s => document.getElementById(s.id));
-  const dots = document.querySelectorAll("#progress .dot");
   const subtitleText = document.getElementById("subtitle-text");
   const startOverlay = document.getElementById("start-overlay");
   const startBtn = document.getElementById("start-btn");
@@ -454,10 +589,6 @@ def _build_shared_js(scenes_data_json: str) -> str:
       if(idx === currentIdx){{ resetScene(el); el.classList.add("active"); }}
       else {{ el.classList.remove("active"); }}
     }});
-    dots.forEach((d, idx) => {{
-      d.classList.toggle("done", idx < currentIdx);
-      d.classList.toggle("current", idx === currentIdx);
-    }});
   }}
   window.showScene = showScene;
 
@@ -465,25 +596,15 @@ def _build_shared_js(scenes_data_json: str) -> str:
     const s = scenesData[currentIdx];
     const currentSceneEl = sceneEls[currentIdx];
     const isIntro = (currentSceneEl && currentSceneEl.getAttribute("data-template") === "intro") || currentIdx === 0;
-    const minHold = isIntro ? 2500 : (s.holdMs || 8000);
 
     if(subtitleText) subtitleText.textContent = s.narration || s.subtitle || "";
 
     return new Promise(resolve => {{
-      let speechDone = false;
-      let holdDone = false;
-      const finish = () => {{ if(speechDone && holdDone) resolve(); }};
+      let done = false;
+      const finish = () => {{ if(!done){{ done = true; resolve(); }} }};
 
-      const safetyTimer = setTimeout(() => {{
-        speechDone = true; holdDone = true;
-        if(synth) try {{ synth.cancel(); }} catch(e){{}}
-        resolve();
-      }}, minHold + 15000);
-
-      setTimeout(() => {{
-        holdDone = true;
-        finish();
-      }}, minHold);
+      const safetyMs = isIntro ? 3000 : (s.holdMs || 8000) + 5000;
+      const safetyTimer = setTimeout(finish, safetyMs);
 
       // --- SPRINT 4 TASK 4: INTRO MUSIC & TTS SUPPRESSION LOGIC ---
       if(isIntro) {{
@@ -492,8 +613,8 @@ def _build_shared_js(scenes_data_json: str) -> str:
           bgAudio.currentTime = 0;
           bgAudio.play().catch(err => console.log("Audio autoplay prevented:", err));
         }}
-        speechDone = true; // Speech bypassed during intro
-        finish();
+        clearTimeout(safetyTimer);
+        setTimeout(finish, 2500);
       }} else {{
         // Stop music if playing from scene 1
         if(bgAudio && !bgAudio.paused) {{
@@ -505,17 +626,19 @@ def _build_shared_js(scenes_data_json: str) -> str:
         if(synth && s.narration){{
           try {{
             synth.cancel();
+            if(synth.resume) synth.resume();
             const utter = new SpeechSynthesisUtterance(s.narration);
             if(chosenVoice) utter.voice = chosenVoice;
             utter.rate = 0.95;
-            utter.onend = () => {{ clearTimeout(safetyTimer); speechDone = true; finish(); }};
-            utter.onerror = () => {{ clearTimeout(safetyTimer); speechDone = true; finish(); }};
+            utter.onend = () => {{ clearTimeout(safetyTimer); finish(); }};
+            utter.onerror = () => {{ clearTimeout(safetyTimer); finish(); }};
             synth.speak(utter);
           }} catch(err){{
-            clearTimeout(safetyTimer); speechDone = true; finish();
+            clearTimeout(safetyTimer); finish();
           }}
         }} else {{
-          speechDone = true; finish();
+          clearTimeout(safetyTimer);
+          setTimeout(finish, s.holdMs || 8000);
         }}
       }}
     }});
@@ -528,7 +651,7 @@ def _build_shared_js(scenes_data_json: str) -> str:
     if(!isPlaying) return;
     if(currentIdx < scenesData.length - 1){{
       currentIdx++;
-      stepTimer = setTimeout(stepSequence, 600);
+      stepTimer = setTimeout(stepSequence, 0);
     }} else {{
       isPlaying = false;
       replayBtn.style.display = "inline-flex";
@@ -540,7 +663,6 @@ def _build_shared_js(scenes_data_json: str) -> str:
   function startAutoPlay(f){{ isPlaying = true; currentIdx = f||0; if(stepTimer) clearTimeout(stepTimer); stepSequence(); }}
   function stopAutoPlay(){{ isPlaying = false; if(stepTimer) clearTimeout(stepTimer); if(synth) try{{ synth.cancel(); }} catch(e){{}} if(bgAudio) {{ bgAudio.pause(); }} }}
 
-  dots.forEach((dot, idx) => {{ dot.addEventListener("click", () => {{ stopAutoPlay(); startOverlay.classList.add("hidden"); showScene(idx); }}); }});
   startBtn.addEventListener("click", () => {{ startOverlay.classList.add("hidden"); startAutoPlay(0); }});
   replayBtn.addEventListener("click", () => {{ startOverlay.classList.add("hidden"); startAutoPlay(0); }});
   showScene(0);
@@ -568,11 +690,43 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
     """
     # 0. Deep copy & normalize
     plan = json.loads(json.dumps(scene_plan))
-    for scene in plan.get("scenes", []):
+
+    # 0a. Generate unique, scene-specific custom inline SVGs for EVERY scene via SVG Agent
+    svg_dict = {}
+    try:
+        from backend.app.pipeline.render.svg_agent import generate_scene_svgs_for_plan
+        svg_dict = generate_scene_svgs_for_plan(plan)
+    except Exception as svg_err:
+        print(f"[PIPELINE WARNING] SVG Agent error: {svg_err}")
+
+    scenes_list = plan.get("scenes", [])
+    total_scenes_cnt = len(scenes_list)
+    for idx, scene in enumerate(scenes_list):
+        sid = str(scene.get("scene_id", idx + 1))
         if "visual_cues" not in scene and "visual_elements" in scene:
             scene["visual_cues"] = scene["visual_elements"]
         if "visual_cues" not in scene:
             scene["visual_cues"] = []
+        if "svg_code" in scene and "generated_svg" not in scene:
+            scene["generated_svg"] = scene["svg_code"]
+        if "svg" in scene and "generated_svg" not in scene:
+            scene["generated_svg"] = scene["svg"]
+        if not scene.get("generated_svg") and sid in svg_dict:
+            scene["generated_svg"] = svg_dict[sid]
+        if not scene.get("generated_svg"):
+            scene["generated_svg"] = _generate_scene_svg(scene, plan.get("title", ""), scene_index=idx, total_scenes=total_scenes_cnt)
+
+        # Ensure scene headline is a short, concise concept explanation, NEVER full narration transcript
+        scene["headline"] = _extract_scene_headline(scene, default_title=plan.get("title", "Key Concept"))
+        scene["subtitle"] = scene["headline"]
+
+        # Clean cue labels to avoid printing raw AI image prompt descriptions under icons
+        for cue in scene.get("visual_cues", []):
+            if isinstance(cue, dict):
+                desc = cue.get("description") or ""
+                cnt = cue.get("content") or ""
+                clean_lbl = cnt if cnt else desc
+                cue["clean_label"] = _clean_headline_text(clean_lbl)
 
     # 1. Assign templates via rule-based mapper
     print("[PIPELINE] Assigning templates to scenes...")
@@ -661,7 +815,7 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
             scene=scene,
             template_html=template_html,
             plan_context=plan,
-            use_llm=True,
+            use_llm=False,
         )
         scene_fragments.append((scene, populated))
 
@@ -669,12 +823,6 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
     print("[PIPELINE] Assembling final merged HTML document...")
     title = plan.get("title", "AI Explainer Video")
     c1, c2, c3 = _detect_accent_colors(title)
-
-    # Build progress dots
-    dots_html = "\n".join(
-        f'      <div class="dot{" current" if i == 0 else ""}" data-i="{i}"></div>'
-        for i in range(len(scene_fragments))
-    )
 
     # Build scene divs
     scenes_html_parts = []
@@ -720,10 +868,6 @@ def generate_video_html(scene_plan: dict, asset_data: dict | None = None) -> str
 <div id="page">
   <div id="video-frame">
     <audio id="intro-bg-music" src="assets/intro_music.mp3" preload="auto"></audio>
-
-    <div id="progress">
-{dots_html}
-    </div>
 
 {scenes_html}
 

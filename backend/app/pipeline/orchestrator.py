@@ -145,12 +145,17 @@ async def process_video_job(
         _safe_db_update(supabase_client, "videos", {"timestamp_data": timestamp_dict}, job_id)
         logger.info(f"[{job_id}] Stage 4 Complete!")
 
-        # STAGE 5: Assets
+        # STAGE 5: Assets (Inline SVG generation prioritized by HTML Generator)
         current_stage = "assets"
         _safe_db_update(supabase_client, "videos", {"status": "fetching_assets"}, job_id)
         logger.info(f"[{job_id}] Running Stage 5: Asset Service...")
 
-        asset_data = await process_scene_elements(scene_data_dict, supabase_client=supabase_client)
+        asset_data = {"video_id": job_id, "assets": []}
+        try:
+            asset_data = await process_scene_elements(scene_data_dict, supabase_client=supabase_client)
+        except Exception as asset_err:
+            logger.warning(f"[{job_id}] Asset service warning ({asset_err}); HTML Generator will use inline SVGs.")
+
         result_payload["asset_data"] = asset_data
         _safe_db_update(supabase_client, "videos", {"asset_data": asset_data}, job_id)
         logger.info(f"[{job_id}] Stage 5 Complete!")

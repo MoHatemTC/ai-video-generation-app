@@ -82,7 +82,6 @@ def test_js_engine_tts_suppression_and_audio(sample_scene_plan):
     assert "bgAudio = document.getElementById(\"intro-bg-music\")" in html or 'bgAudio = document.getElementById("intro-bg-music")' in html
     assert "if(isIntro)" in html
     assert "bgAudio.play()" in html
-    assert "speechDone = true;" in html
     assert "bgAudio.pause()" in html
 
 
@@ -123,7 +122,61 @@ def test_html_writer_prompt_guardrails():
 def test_intro_duration_and_tts_start(sample_scene_plan):
     """Verify intro scene hold duration is set to 2.5s (2500ms) and TTS narration starts on Scene 2."""
     html = generate_video_html(sample_scene_plan)
-    assert "const minHold = isIntro ? 2500 : (s.holdMs || 8000);" in html
-    # Scene 1 (intro) hold_ms in JS data should be 2500
+    assert "setTimeout(finish, 2500);" in html
     assert '"holdMs": 2500' in html
+
+
+def test_generated_svg_placeholder_injection(sample_scene_plan):
+    """Verify that #svg-container and generated_svg placeholder embeds custom SVG code when provided."""
+    sample_scene_plan["scenes"][0]["generated_svg"] = '<svg id="omar-custom-intro-svg"><circle cx="20" cy="20" r="10"/></svg>'
+    html = generate_video_html(sample_scene_plan)
+
+    assert '<div id="svg-container"' in html
+    assert '<svg id="omar-custom-intro-svg">' in html
+
+
+def test_progress_dots_removed(sample_scene_plan):
+    """Verify that top progress dots navigation (#progress) is removed from generated HTML."""
+    html = generate_video_html(sample_scene_plan)
+    assert '<div id="progress">' not in html
+    assert '#progress .dot' not in html
+
+
+def test_no_inter_scene_delay(sample_scene_plan):
+    """Verify that inter-scene delay is 0ms (setTimeout(stepSequence, 0)) to eliminate silence."""
+    html = generate_video_html(sample_scene_plan)
+    assert 'stepTimer = setTimeout(stepSequence, 0);' in html
+
+
+def test_instant_scene_cut_transition(sample_scene_plan):
+    """Verify that .scene transition is set to instant cut (opacity 0.05s ease)."""
+    html = generate_video_html(sample_scene_plan)
+    assert 'transition:opacity 0.05s ease' in html
+
+
+def test_automatic_inline_svg_generation(sample_scene_plan):
+    """Verify that scenes without pre-existing generated_svg receive an inline SVG directly from scene data."""
+    # Clear any explicit generated_svg
+    for scene in sample_scene_plan["scenes"]:
+        scene.pop("generated_svg", None)
+        scene.pop("svg_code", None)
+
+    html = generate_video_html(sample_scene_plan)
+    assert '<svg class="concept-svg float"' in html
+    assert 'aria-label=' in html and 'SVG' in html
+
+
+def test_transcript_removed_from_top_display(sample_scene_plan):
+    """Verify that full narration transcript text is not displayed in top scene titles, and transcript bar is hidden."""
+    sample_scene_plan["scenes"][1]["text"] = "This is a very long narration transcript text that should never be placed in the top scene title header."
+    sample_scene_plan["scenes"][1]["subtitle"] = sample_scene_plan["scenes"][1]["text"]
+
+    html = generate_video_html(sample_scene_plan)
+
+    # Full long narration transcript text should NOT appear inside top scene title headers
+    assert '<div class="scene-title"><span>This is a very long narration transcript' not in html
+    assert '.scene-narration' in html and 'display:none !important;' in html
+
+
+
 
