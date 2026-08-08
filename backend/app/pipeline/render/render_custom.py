@@ -409,8 +409,8 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
 
 /* ─── Hero Layout (Content A — split screen) ─── */
 .hero-layout{{
-  display:flex;align-items:center;justify-content:center;gap:clamp(32px,5vw,70px);
-  width:100%;max-width:900px;flex:1;margin:0 auto;
+  display:flex;align-items:center;justify-content:center;gap:clamp(40px,6vw,90px);
+  width:100%;max-width:950px;flex:1;margin:0 auto;
 }}
 .hero-image-wrap{{
   flex-shrink:0;
@@ -421,7 +421,7 @@ html,body{{height:100%;width:100%;background:var(--bg);font-family:"Plus Jakarta
   object-fit:contain;border-radius:24px;
 }}
 .hero-text-wrap{{
-  flex:1;text-align:left;padding-left:clamp(10px,2vw,30px);
+  flex:1;text-align:left;padding-left:clamp(30px,4vw,65px);margin-left:20px;
   opacity:0;animation:slideInRight .6s ease forwards;animation-delay:.5s;
 }}
 .hero-text-wrap .scene-narration{{
