@@ -13,6 +13,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Playwright needs its own browser binaries downloaded separately from the pip package.
+# --with-deps also installs the system libraries (fonts, codecs, etc.) Chromium needs
+# to actually launch inside a slim Linux container.
+RUN playwright install --with-deps chromium
+
 # Now copy the actual code
 COPY backend ./backend
 
