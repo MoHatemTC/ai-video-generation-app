@@ -182,7 +182,7 @@ async def process_video_job(
             except Exception as mp4_err:
                 logger.warning(f"[{job_id}] MP4 rendering warning: {mp4_err}")
 
-            return f"/renders/{job_id}.html"
+            return f"/renders/{job_id}.mp4"
 
         video_url = await _render_to_outputs(scene_data_dict, asset_data)
         result_payload["video_url"] = video_url

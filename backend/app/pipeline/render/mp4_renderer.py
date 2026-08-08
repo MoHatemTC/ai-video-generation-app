@@ -15,84 +15,111 @@ logger = logging.getLogger(__name__)
 
 import concurrent.futures
 
-def _playwright_capture_worker(target_html: str, total_scenes: int, temp_dir: str) -> List[str]:
+def _playwright_record_worker(
+    target_html: str,
+    total_duration_ms: int,
+    temp_dir: str,
+) -> str:
     """
-    Top-level worker function running in an isolated process with its own event loop policy.
-    Bypasses Windows Uvicorn SelectorEventLoop subprocess NotImplementedError.
-    Waits for all external SVG/image assets and CSS animations to settle before capturing.
+    Record the actual HTML animation using Playwright.
+    The HTML scene player and CSS/SVG animations run normally.
     """
-    slide_images = []
-    try:
-        from pathlib import Path
-        from playwright.sync_api import sync_playwright
+    from pathlib import Path
+    from playwright.sync_api import sync_playwright
 
+    os.makedirs(temp_dir, exist_ok=True)
+
+    try:
         file_url = Path(os.path.abspath(target_html)).as_uri()
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page(viewport={"width": 1920, "height": 1080})
-            page.goto(file_url, wait_until="domcontentloaded", timeout=15000)
+
+            context = browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                record_video_dir=temp_dir,
+                record_video_size={
+                    "width": 1920,
+                    "height": 1080,
+                },
+            )
+
+            page = context.new_page()
+
+            logger.info("Opening HTML for video recording")
+
+            page.goto(
+                file_url,
+                wait_until="domcontentloaded",
+                timeout=30000,
+            )
+
             try:
-                page.wait_for_load_state("networkidle", timeout=3000)
+                page.wait_for_load_state(
+                    "networkidle",
+                    timeout=5000,
+                )
             except Exception:
                 pass
+
+            # Wait for fonts / SVG / assets
             page.wait_for_timeout(1000)
 
-            # Force remove start overlay
-            try:
-                page.evaluate("""() => {
-                    const overlay = document.getElementById('start-overlay');
+            # Start the actual HTML presentation
+            page.evaluate("""
+                () => {
+                    const overlay =
+                        document.getElementById("start-overlay");
+
                     if (overlay) {
-                        overlay.style.display = 'none';
-                        overlay.style.visibility = 'hidden';
-                        overlay.style.opacity = '0';
+                        overlay.style.display = "none";
                     }
-                }""")
-            except Exception:
-                pass
 
-            # Brief pause for assets & fonts
-            page.wait_for_timeout(800)
+                    if (typeof window.showScene === "function") {
+                        window.showScene(0);
+                    }
 
-            for idx in range(total_scenes):
-                try:
-                    # Activate scene idx via JS showScene and force inline styles
-                    page.evaluate(f"""(idx) => {{
-                        if (typeof window.showScene === 'function') {{
-                            window.showScene(idx);
-                        }}
-                        const sceneEls = document.querySelectorAll('.scene');
-                        sceneEls.forEach((el, i) => {{
-                            if (i === idx) {{
-                                el.classList.add('active');
-                                el.style.display = 'block';
-                                el.style.visibility = 'visible';
-                                el.style.opacity = '1';
-                            }} else {{
-                                el.classList.remove('active');
-                                el.style.display = 'none';
-                                el.style.opacity = '0';
-                            }}
-                        }});
-                    }}""", idx)
-                except Exception as scene_err:
-                    logger.warning(f"Scene activation error for index {idx}: {scene_err}")
+                    if (typeof window.startAutoPlay === "function") {
+                        window.startAutoPlay(0);
+                    }
+                }
+            """)
 
-                # Wait for CSS transitions and animations to reveal content
-                page.wait_for_timeout(1200)
-                slide_path = os.path.join(temp_dir, f"slide_{idx:03d}.png")
-                try:
-                    page.screenshot(path=slide_path, full_page=False)
-                    if os.path.exists(slide_path) and os.path.getsize(slide_path) > 0:
-                        slide_images.append(slide_path)
-                except Exception as ss_err:
-                    logger.warning(f"Screenshot error for slide {idx}: {ss_err}")
+            logger.info(
+                "Recording HTML animation for %.2f seconds",
+                total_duration_ms / 1000.0,
+            )
 
+            # Let all scenes + CSS/SVG animations play
+            page.wait_for_timeout(total_duration_ms + 1000)
+
+            video = page.video
+
+            # Closing context finalizes the video
+            context.close()
             browser.close()
-    except Exception as err:
-        logger.warning(f"Error inside _playwright_capture_worker: {err}")
 
-    return slide_images
+            if video:
+                recorded_path = video.path()
+
+                if (
+                    recorded_path
+                    and os.path.exists(recorded_path)
+                    and os.path.getsize(recorded_path) > 0
+                ):
+                    logger.info(
+                        "Playwright recording completed: %s",
+                        recorded_path,
+                    )
+                    return recorded_path
+
+    except Exception as err:
+        logger.exception(
+            "Playwright recording failed: %s",
+            err,
+        )
+
+    return ""
 
 
 async def render_scene_plan_to_mp4(scene_data: Dict[str, Any], audio_path: str, output_mp4_path: str, html_path: str = "") -> str:
@@ -188,82 +215,99 @@ async def render_scene_plan_to_mp4(scene_data: Dict[str, Any], audio_path: str, 
                 durations[-1] = max(1.5, round(durations[-1] + diff, 2))
 
         # 2. Use ProcessPoolExecutor to run Playwright capture in an isolated process
+        # 2. Record the actual HTML animation using Playwright
+        total_duration_ms = int(sum(durations) * 1000)
+
+        recorded_video = ""
+
         try:
             loop = asyncio.get_running_loop()
+
             with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-                slide_images = await loop.run_in_executor(
-                    executor, _playwright_capture_worker, target_html, len(scenes), temp_dir
+                recorded_video = await loop.run_in_executor(
+                    executor,
+                    _playwright_record_worker,
+                    target_html,
+                    total_duration_ms,
+                    temp_dir,
                 )
+
         except Exception as pw_err:
-            logger.warning(f"ProcessPoolExecutor capture warning ({pw_err}). Trying direct invocation...")
+            logger.warning(
+                f"Playwright recording warning ({pw_err}). "
+                "Trying direct invocation..."
+            )
+
             try:
-                slide_images = _playwright_capture_worker(target_html, len(scenes), temp_dir)
+                recorded_video = _playwright_record_worker(
+                    target_html,
+                    total_duration_ms,
+                    temp_dir,
+                )
             except Exception as sync_err:
-                logger.warning(f"Direct sync capture fallback: {sync_err}")
+                logger.warning(
+                    f"Direct recording fallback failed: {sync_err}"
+                )
 
-        # PIL Fallback if Playwright capture returned no images
-        if not slide_images:
-            logger.warning("Playwright rendering fallback to PIL generator")
-            from PIL import Image, ImageDraw
-            for idx, scene in enumerate(scenes):
-                img = Image.new("RGB", (1920, 1080), color=(15, 23, 42))
-                draw = ImageDraw.Draw(img)
-                draw.text((80, 60), "SPRINTS VIDEO STUDIO", fill=(56, 189, 248))
-                title = scene.get("subtitle") or scene.get("title") or f"Scene {idx+1}"
-                draw.text((80, 160), str(title)[:60], fill=(255, 255, 255))
-                narration = scene.get("text", "")
-                draw.rectangle([(60, 900), (1860, 1020)], fill=(30, 41, 59))
-                draw.text((90, 930), str(narration)[:120], fill=(226, 232, 240))
-                slide_path = os.path.join(temp_dir, f"slide_{idx:03d}.png")
-                img.save(slide_path)
-                slide_images.append(slide_path)
+        
 
-        if not slide_images:
-            return ""
-
-        # 3. Build ffmpeg concat list file
-        concat_list_path = os.path.join(temp_dir, "input.txt")
-        with open(concat_list_path, "w", encoding="utf-8") as f:
-            for s_path, dur in zip(slide_images, durations):
-                abs_p = os.path.abspath(s_path).replace("\\", "/")
-                f.write(f"file '{abs_p}'\n")
-                f.write(f"duration {dur}\n")
-            if slide_images:
-                abs_p = os.path.abspath(slide_images[-1]).replace("\\", "/")
-                f.write(f"file '{abs_p}'\n")
-
-        # 4. Run ffmpeg to combine browser screenshots + audio track into high-res MP4 video
-        has_audio = bool(audio_path and os.path.exists(audio_path))
-        safe_concat_path = os.path.abspath(concat_list_path).replace("\\", "/")
+        safe_video_path = os.path.abspath(recorded_video).replace("\\", "/")
         safe_output_path = os.path.abspath(output_mp4_path).replace("\\", "/")
 
         cmd = [
-            "ffmpeg", "-y",
-            "-f", "concat", "-safe", "0", "-i", safe_concat_path,
+            "ffmpeg",
+            "-y",
+            "-i", safe_video_path,
         ]
-        if has_audio:
+
+        if audio_path and os.path.exists(audio_path):
             safe_audio_path = os.path.abspath(audio_path).replace("\\", "/")
-            cmd.extend(["-i", safe_audio_path, "-c:a", "aac", "-b:a", "192k"])
+            cmd.extend([
+                "-i", safe_audio_path,
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-crf", "18",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                "-movflags", "+faststart",
+            ])
         else:
-            cmd.extend(["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", "-c:a", "aac"])
+            cmd.extend([
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-crf", "18",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+            ])
 
-        cmd.extend([
-            "-c:v", "libx264",
-            "-r", "30",
-            "-pix_fmt", "yuv420p",
-            safe_output_path
-        ])
+        cmd.append(safe_output_path)
 
-        logger.info(f"Rendering high-quality HTML MP4 video to {output_mp4_path}...")
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
-        
+        logger.info(f"Converting Playwright recording to MP4: {output_mp4_path}")
+
+        res = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=180,
+        )
+
         if res.returncode != 0:
-            logger.warning(f"ffmpeg MP4 rendering returned code {res.returncode}: {res.stderr[:500]}")
-        
+            logger.error(
+                f"FFmpeg MP4 conversion failed: {res.stderr[-2000:]}"
+            )
+            return ""
+
         if os.path.exists(output_mp4_path) and os.path.getsize(output_mp4_path) > 0:
-            logger.info(f"MP4 Video rendered successfully: {output_mp4_path} ({os.path.getsize(output_mp4_path)} bytes)")
+            logger.info(
+                f"MP4 rendered successfully: {output_mp4_path} "
+                f"({os.path.getsize(output_mp4_path)} bytes)"
+            )
             return output_mp4_path
 
+        logger.error("FFmpeg finished but MP4 file was not created.")
         return ""
 
     except Exception as e:
